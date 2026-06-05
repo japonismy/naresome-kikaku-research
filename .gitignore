@@ -1,4 +1,5 @@
 thumbnail_assets/
+script_csv_assets/
 ocr_work/
 bq_sync_export/
 __pycache__/

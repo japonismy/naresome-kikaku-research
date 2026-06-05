@@ -51,6 +51,30 @@ uv run --with google-cloud-bigquery python generate_portal_data_bq.py
 
 現在の対象・対象外一覧は `reports/channel_scope.csv` に出力します。
 
+## 台本/字幕CSV
+
+保全済み字幕から、動画IDごとのCSV資産を作る準備があります。
+
+台帳のみ更新:
+
+```powershell
+python inventory_script_assets.py
+```
+
+ローカルCSV資産も生成:
+
+```powershell
+python inventory_script_assets.py --export-csv-assets
+```
+
+CSV実体は大きくなるためGitHub Pagesには直接コミットせず、GCSなどの外部ストレージに置きます。ページ側にはダウンロードURLだけを持たせる想定です。
+
+台本資産台帳をBigQueryへ同期:
+
+```powershell
+uv run --with google-cloud-bigquery python sync_script_assets_to_bq.py
+```
+
 ローカルから手動で再生成して公開する場合:
 
 ```powershell

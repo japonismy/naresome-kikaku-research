@@ -54,6 +54,8 @@ def main() -> int:
                 "emotion_appeal": "",
                 "story_hook": "",
             },
+            "script_asset_available": bool(row.script_asset_available),
+            "script_csv_url": row.public_csv_url or "",
             "tags": parse_tags(row.tags),
         }
         videos.append(item)
@@ -93,6 +95,8 @@ def main() -> int:
         "videos_missing_thumbnail_text": len(missing),
         "description_digests": len(descriptions),
         "digest_chars_per_video": DIGEST_CHARS,
+        "videos_with_script_asset": sum(1 for v in videos if v["script_asset_available"]),
+        "videos_with_script_csv_url": sum(1 for v in videos if v["script_csv_url"]),
         "target_channels": sum(1 for c in channels if c.is_target),
         "excluded_channels": sum(1 for c in channels if not c.is_target),
         "source": "bigquery",
@@ -135,11 +139,15 @@ def video_query() -> str:
       v.thumbnail_url_max AS thumbnail_url,
       v.tags,
       v.fetched_at,
-      o.thumbnail_text
+      o.thumbnail_text,
+      IF(sa.video_id IS NOT NULL AND sa.asset_count > 0, TRUE, FALSE) AS script_asset_available,
+      sa.public_csv_url
     FROM `{PROJECT_ID}.{DATASET}.videos` v
     JOIN `{PROJECT_ID}.{DATASET}.channels` c
       USING(channel_id)
     LEFT JOIN ocr o
+      USING(video_id)
+    LEFT JOIN `{PROJECT_ID}.{DATASET}.script_assets` sa
       USING(video_id)
     WHERE v.thumbnail_url_max IS NOT NULL
       AND v.thumbnail_url_max != ''
