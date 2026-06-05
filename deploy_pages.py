@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -17,7 +18,7 @@ def run(cmd: list[str]) -> None:
 
 
 def main() -> int:
-    run(["python", "generate_portal_data.py"])
+    run([sys.executable, "generate_portal_data_bq.py"])
     run(["git", "add", "."])
     status = subprocess.run(["git", "status", "--short"], cwd=HERE, text=True, encoding="utf-8", errors="replace", capture_output=True).stdout.strip()
     if not status:
