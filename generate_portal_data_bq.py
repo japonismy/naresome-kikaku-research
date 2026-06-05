@@ -37,6 +37,7 @@ def main() -> int:
             "like_count": row.like_count or 0,
             "comment_count": row.comment_count or 0,
             "thumbnail_url": row.thumbnail_url or "",
+            "thumbnail_gcs_uri": row.thumbnail_gcs_uri or "",
             "thumbnail_max_url": f"https://i.ytimg.com/vi/{vid}/maxresdefault.jpg",
             "thumbnail_fallback_urls": [
                 f"https://i.ytimg.com/vi/{vid}/sddefault.jpg",
@@ -55,6 +56,7 @@ def main() -> int:
                 "story_hook": "",
             },
             "script_asset_available": bool(row.script_asset_available),
+            "script_gcs_uri": row.gcs_csv_uri or "",
             "script_csv_url": row.public_csv_url or "",
             "tags": parse_tags(row.tags),
         }
@@ -96,7 +98,9 @@ def main() -> int:
         "description_digests": len(descriptions),
         "digest_chars_per_video": DIGEST_CHARS,
         "videos_with_script_asset": sum(1 for v in videos if v["script_asset_available"]),
+        "videos_with_script_gcs_uri": sum(1 for v in videos if v["script_gcs_uri"]),
         "videos_with_script_csv_url": sum(1 for v in videos if v["script_csv_url"]),
+        "videos_with_thumbnail_gcs_uri": sum(1 for v in videos if v["thumbnail_gcs_uri"]),
         "target_channels": sum(1 for c in channels if c.is_target),
         "excluded_channels": sum(1 for c in channels if not c.is_target),
         "source": "bigquery",
@@ -141,13 +145,17 @@ def video_query() -> str:
       v.fetched_at,
       o.thumbnail_text,
       IF(sa.video_id IS NOT NULL AND sa.asset_count > 0, TRUE, FALSE) AS script_asset_available,
-      sa.public_csv_url
+      sa.gcs_csv_uri,
+      sa.public_csv_url,
+      ta.gcs_uri AS thumbnail_gcs_uri
     FROM `{PROJECT_ID}.{DATASET}.videos` v
     JOIN `{PROJECT_ID}.{DATASET}.channels` c
       USING(channel_id)
     LEFT JOIN ocr o
       USING(video_id)
     LEFT JOIN `{PROJECT_ID}.{DATASET}.script_assets` sa
+      USING(video_id)
+    LEFT JOIN `{PROJECT_ID}.{DATASET}.thumbnail_assets` ta
       USING(video_id)
     WHERE v.thumbnail_url_max IS NOT NULL
       AND v.thumbnail_url_max != ''

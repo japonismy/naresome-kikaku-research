@@ -85,6 +85,26 @@ CSV実体は大きくなるためGitHub Pagesには直接コミットせず、GC
 uv run --with google-cloud-bigquery python sync_script_assets_to_bq.py
 ```
 
+GCS移行用のステージングと台帳作成:
+
+```powershell
+python prepare_gcs_assets.py
+```
+
+GCS保存先:
+
+```text
+gs://senior-share-staging-570862915709/naresome_script_csv/{video_id}.csv
+gs://senior-share-staging-570862915709/naresome_thumbnails/{video_id}.jpg
+```
+
+BQ反映:
+
+```powershell
+uv run --with google-cloud-bigquery python sync_gcs_assets_to_bq.py
+uv run --with google-cloud-bigquery python generate_portal_data_bq.py
+```
+
 ローカルから手動で再生成して公開する場合:
 
 ```powershell
