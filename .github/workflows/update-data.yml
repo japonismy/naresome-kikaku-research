@@ -1,0 +1,45 @@
+name: Update Data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "50 18 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install google-cloud-bigquery
+
+      - name: Configure Google credentials
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          test -n "$GCP_SA_KEY"
+          printf '%s' "$GCP_SA_KEY" > "$RUNNER_TEMP/gcp-sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/gcp-sa.json" >> "$GITHUB_ENV"
+
+      - name: Generate data from BigQuery
+        run: python generate_portal_data_bq.py
+
+      - name: Commit updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data reports
+          if git diff --cached --quiet; then
+            echo "No data changes."
+          else
+            git commit -m "Update data from BigQuery"
+            git push
+          fi

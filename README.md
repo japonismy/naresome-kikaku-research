@@ -16,6 +16,15 @@
 python generate_portal_data.py
 ```
 
+BigQueryから直接生成する場合:
+
+```powershell
+uv run --with google-cloud-bigquery python generate_portal_data_bq.py
+```
+
+GitHub Actionsで毎日03:50 JSTにBigQueryから自動更新する。
+認証には repo secret `GCP_SA_KEY` を使う。
+
 生成物:
 
 - `index.html`
