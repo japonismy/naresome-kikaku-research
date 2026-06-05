@@ -105,6 +105,14 @@ GCS移行用のステージングと台帳作成:
 python prepare_gcs_assets.py
 ```
 
+GCS未登録サムネをYouTubeから再取得:
+
+```powershell
+python download_missing_thumbnails.py
+python prepare_gcs_assets.py
+python run_asset_maintenance.py
+```
+
 GCS保存先:
 
 ```text

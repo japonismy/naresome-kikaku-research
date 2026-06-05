@@ -60,6 +60,7 @@ def load_target_ids() -> set[str]:
 
 
 def stage_thumbnails(target_ids: set[str]) -> list[dict[str, object]]:
+    staged = existing_staged_thumbnails(target_ids)
     con = sqlite3.connect(str(DB_PATH))
     con.row_factory = sqlite3.Row
     try:
@@ -73,7 +74,7 @@ def stage_thumbnails(target_ids: set[str]) -> list[dict[str, object]]:
     finally:
         con.close()
 
-    out_rows = []
+    out_rows_by_id = dict(staged)
     for row in rows:
         video_id = row["video_id"]
         if video_id not in target_ids:
@@ -95,16 +96,34 @@ def stage_thumbnails(target_ids: set[str]) -> list[dict[str, object]]:
             bytes_size = 0
             gcs_uri = ""
             error = f"missing: {src}"
-        out_rows.append(
-            {
+        out_rows_by_id[video_id] = {
                 "video_id": video_id,
                 "local_path": local_path,
                 "bytes": bytes_size,
                 "gcs_uri": gcs_uri,
                 "error": error,
             }
-        )
-    return sorted(out_rows, key=lambda r: r["video_id"])
+    return sorted(out_rows_by_id.values(), key=lambda r: r["video_id"])
+
+
+def existing_staged_thumbnails(target_ids: set[str]) -> dict[str, dict[str, object]]:
+    rows = {}
+    if not THUMB_DIR.exists():
+        return rows
+    for path in THUMB_DIR.iterdir():
+        if not path.is_file() or path.suffix.lower() not in {".jpg", ".jpeg", ".png", ".webp"}:
+            continue
+        video_id = path.stem
+        if video_id not in target_ids:
+            continue
+        rows[video_id] = {
+            "video_id": video_id,
+            "local_path": str(path),
+            "bytes": path.stat().st_size,
+            "gcs_uri": f"gs://senior-share-staging-570862915709/naresome_thumbnails/{path.name}",
+            "error": "",
+        }
+    return rows
 
 
 def resolve_local_path(value: str) -> Path:
