@@ -32,6 +32,20 @@ BigQueryからページ用データを生成します。
 uv run --with google-cloud-bigquery python generate_portal_data_bq.py
 ```
 
+## サムネOCR
+
+シニア朗読と同じく `gemini-2.5-flash-lite` を使います。
+
+```powershell
+uv run --with google-genai --with google-cloud-bigquery python ocr_missing_thumbnails_gemini.py
+```
+
+まず件数や対象だけ確認する場合:
+
+```powershell
+uv run --with google-genai --with google-cloud-bigquery python ocr_missing_thumbnails_gemini.py --dry-run --limit 20
+```
+
 生成物:
 
 - `data/videos.js`
