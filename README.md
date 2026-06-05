@@ -105,6 +105,20 @@ uv run --with google-cloud-bigquery python sync_gcs_assets_to_bq.py
 uv run --with google-cloud-bigquery python generate_portal_data_bq.py
 ```
 
+一括メンテナンス:
+
+```powershell
+python run_asset_maintenance.py
+```
+
+ページ更新まで行う場合:
+
+```powershell
+python run_asset_maintenance.py --deploy
+```
+
+このバッチは `gcloud` のアカウントを `japonismy@gmail.com`、プロジェクトを `rugged-destiny-408613` に揃えてから実行します。
+
 ローカルから手動で再生成して公開する場合:
 
 ```powershell
