@@ -86,7 +86,7 @@ def main() -> int:
     write_js(DATA_DIR / "transcripts_light.js", "TRANSCRIPT_DATA", descriptions)
     write_missing_csv(REPORT_DIR / "thumbnail_text_missing.csv", missing)
     channels = list(client.query(channel_scope_query()).result())
-    write_channel_scope_csv(REPORT_DIR / "target_channels.csv", channels)
+    write_channel_scope_csv(REPORT_DIR / "channel_scope.csv", channels)
     summary = {
         "videos": len(videos),
         "videos_with_thumbnail_text": sum(1 for v in videos if v["thumbnail_text"]),
@@ -145,6 +145,7 @@ def video_query() -> str:
       AND v.thumbnail_url_max != ''
       AND COALESCE(c.relation_type, 'competitor') IN ('owned_current', 'competitor', 'migration_or_related_competitor')
       AND COALESCE(c.analysis_status, 'active') NOT IN ('exclude_from_naresome_competitor_analysis')
+      AND REGEXP_CONTAINS(NORMALIZE(COALESCE(c.title, ''), NFKC), r'(馴れ初め|馴初め|なれそめ)')
       AND (v.duration_sec IS NULL OR v.duration_sec >= 120)
     ORDER BY COALESCE(v.view_count, 0) DESC
     """
@@ -161,6 +162,7 @@ def channel_scope_query() -> str:
       (
         COALESCE(relation_type, 'competitor') IN ('owned_current', 'competitor', 'migration_or_related_competitor')
         AND COALESCE(analysis_status, 'active') NOT IN ('exclude_from_naresome_competitor_analysis', 'inactive_or_no_public_videos')
+        AND REGEXP_CONTAINS(NORMALIZE(COALESCE(title, ''), NFKC), r'(馴れ初め|馴初め|なれそめ)')
       ) AS is_target
     FROM `{PROJECT_ID}.{DATASET}.channels`
     ORDER BY is_target DESC, relation_type, analysis_status, video_count DESC, title

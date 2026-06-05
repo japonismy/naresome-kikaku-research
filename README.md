@@ -28,7 +28,7 @@ uv run --with google-cloud-bigquery python generate_portal_data_bq.py
 - `data/transcripts_light.js`
 - `reports/build_summary.json`
 - `reports/thumbnail_text_missing.csv`
-- `reports/target_channels.csv`
+- `reports/channel_scope.csv`
 
 ## 対象チャンネル
 
@@ -45,7 +45,7 @@ uv run --with google-cloud-bigquery python generate_portal_data_bq.py
 - `adjacent_out_of_scope`
 - `owned_legacy`
 
-現在の対象・対象外一覧は `reports/target_channels.csv` に出力します。
+現在の対象・対象外一覧は `reports/channel_scope.csv` に出力します。
 
 ローカルから手動で再生成して公開する場合:
 

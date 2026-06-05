@@ -1,10 +1,10 @@
 {
-  "videos": 8751,
-  "videos_with_thumbnail_text": 5216,
-  "videos_missing_thumbnail_text": 3535,
-  "description_digests": 8365,
+  "videos": 5555,
+  "videos_with_thumbnail_text": 3422,
+  "videos_missing_thumbnail_text": 2133,
+  "description_digests": 5474,
   "digest_chars_per_video": 1600,
-  "target_channels": 27,
-  "excluded_channels": 8,
+  "target_channels": 21,
+  "excluded_channels": 14,
   "source": "bigquery"
 }
