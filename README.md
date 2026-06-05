@@ -32,7 +32,11 @@ uv run --with google-cloud-bigquery python generate_portal_data_bq.py
 
 ## 対象チャンネル
 
-デフォルトの検索対象は以下です。
+デフォルトの検索対象は、チャンネル条件と動画タイトル条件の両方を満たす動画です。
+
+動画タイトル条件:
+
+- タイトルに `馴れ初め`、`馴初め`、`なれそめ` のいずれかを含む
 
 - `owned_current`
 - `competitor` かつ公開動画あり

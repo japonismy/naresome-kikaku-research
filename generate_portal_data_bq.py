@@ -146,6 +146,7 @@ def video_query() -> str:
       AND COALESCE(c.relation_type, 'competitor') IN ('owned_current', 'competitor', 'migration_or_related_competitor')
       AND COALESCE(c.analysis_status, 'active') NOT IN ('exclude_from_naresome_competitor_analysis')
       AND REGEXP_CONTAINS(NORMALIZE(COALESCE(c.title, ''), NFKC), r'(馴れ初め|馴初め|なれそめ)')
+      AND REGEXP_CONTAINS(NORMALIZE(COALESCE(v.title, ''), NFKC), r'(馴れ初め|馴初め|なれそめ)')
       AND (v.duration_sec IS NULL OR v.duration_sec >= 120)
     ORDER BY COALESCE(v.view_count, 0) DESC
     """

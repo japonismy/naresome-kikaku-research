@@ -1,8 +1,8 @@
 {
-  "videos": 5555,
-  "videos_with_thumbnail_text": 3422,
-  "videos_missing_thumbnail_text": 2133,
-  "description_digests": 5474,
+  "videos": 5450,
+  "videos_with_thumbnail_text": 3405,
+  "videos_missing_thumbnail_text": 2045,
+  "description_digests": 5370,
   "digest_chars_per_video": 1600,
   "target_channels": 21,
   "excluded_channels": 14,
