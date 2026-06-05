@@ -1,8 +1,8 @@
 {
   "target_videos": 5450,
-  "videos_with_script_asset": 1633,
-  "videos_missing_script_asset": 3817,
-  "asset_files_found": 6937,
+  "videos_with_script_asset": 1995,
+  "videos_missing_script_asset": 3455,
+  "asset_files_found": 7998,
   "csv_assets_exported": 0,
   "manifest": "E:\\Data\\ObsidianVault\\02_Channels\\馴れ初めシネマ\\競合チャンネル分析\\企画リサーチ_20260605\\reports\\script_assets_manifest.csv"
 }

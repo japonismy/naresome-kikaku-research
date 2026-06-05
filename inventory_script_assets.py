@@ -12,10 +12,13 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 VAULT = HERE.parents[2]
 DB_PATH = VAULT / "馴れ初めシネマ" / "analysis" / "naresome_db.sqlite"
-PRESERVE_DIR = VAULT / "馴れ初めシネマ" / "保全" / "competitor_backup"
+PRESERVE_DIRS = [
+    VAULT / "馴れ初めシネマ" / "保全" / "competitor_backup",
+    VAULT / "馴れ初めシネマ" / "保全" / "yakuza_script_archive_20260606",
+]
 REPORT_DIR = HERE / "reports"
 ASSET_DIR = HERE / "script_csv_assets"
-VIDEO_ID_RE = re.compile(r"(?P<video_id>[A-Za-z0-9_-]{11})")
+VIDEO_ID_RE = re.compile(r"(?:^|_)(?P<video_id>[A-Za-z0-9_-]{11})(?:_|\.|$)")
 
 
 def main() -> int:
@@ -62,15 +65,16 @@ def main() -> int:
 
 def scan_assets() -> dict[str, list[Path]]:
     by_video: dict[str, list[Path]] = {}
-    if not PRESERVE_DIR.exists():
-        return by_video
-    for path in PRESERVE_DIR.rglob("*"):
-        if not path.is_file() or path.suffix.lower() not in {".vtt", ".txt", ".srt"}:
+    for preserve_dir in PRESERVE_DIRS:
+        if not preserve_dir.exists():
             continue
-        match = VIDEO_ID_RE.search(path.name)
-        if not match:
-            continue
-        by_video.setdefault(match.group("video_id"), []).append(path)
+        for path in preserve_dir.rglob("*"):
+            if not path.is_file() or path.suffix.lower() not in {".vtt", ".txt", ".srt"}:
+                continue
+            match = VIDEO_ID_RE.search(path.name)
+            if not match:
+                continue
+            by_video.setdefault(match.group("video_id"), []).append(path)
     return by_video
 
 
