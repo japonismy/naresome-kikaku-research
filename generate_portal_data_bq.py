@@ -85,12 +85,16 @@ def main() -> int:
     write_js(DATA_DIR / "videos.js", "VIDEO_DATA", videos)
     write_js(DATA_DIR / "transcripts_light.js", "TRANSCRIPT_DATA", descriptions)
     write_missing_csv(REPORT_DIR / "thumbnail_text_missing.csv", missing)
+    channels = list(client.query(channel_scope_query()).result())
+    write_channel_scope_csv(REPORT_DIR / "target_channels.csv", channels)
     summary = {
         "videos": len(videos),
         "videos_with_thumbnail_text": sum(1 for v in videos if v["thumbnail_text"]),
         "videos_missing_thumbnail_text": len(missing),
         "description_digests": len(descriptions),
         "digest_chars_per_video": DIGEST_CHARS,
+        "target_channels": sum(1 for c in channels if c.is_target),
+        "excluded_channels": sum(1 for c in channels if not c.is_target),
         "source": "bigquery",
     }
     (REPORT_DIR / "build_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -146,6 +150,23 @@ def video_query() -> str:
     """
 
 
+def channel_scope_query() -> str:
+    return f"""
+    SELECT
+      channel_id,
+      title,
+      COALESCE(relation_type, 'competitor') AS relation_type,
+      COALESCE(analysis_status, 'active') AS analysis_status,
+      COALESCE(video_count, 0) AS video_count,
+      (
+        COALESCE(relation_type, 'competitor') IN ('owned_current', 'competitor', 'migration_or_related_competitor')
+        AND COALESCE(analysis_status, 'active') NOT IN ('exclude_from_naresome_competitor_analysis', 'inactive_or_no_public_videos')
+      ) AS is_target
+    FROM `{PROJECT_ID}.{DATASET}.channels`
+    ORDER BY is_target DESC, relation_type, analysis_status, video_count DESC, title
+    """
+
+
 def compact_text(text: object) -> str:
     return " ".join(str(text or "").replace("\r", "\n").split())
 
@@ -176,6 +197,15 @@ def write_missing_csv(path: Path, rows: list[dict[str, object]]) -> None:
         writer = csv.DictWriter(f, fieldnames=fields)
         writer.writeheader()
         writer.writerows(rows)
+
+
+def write_channel_scope_csv(path: Path, rows: list[object]) -> None:
+    with path.open("w", newline="", encoding="utf-8-sig") as f:
+        fields = ["is_target", "channel_id", "title", "relation_type", "analysis_status", "video_count"]
+        writer = csv.DictWriter(f, fieldnames=fields)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({field: getattr(row, field) for field in fields})
 
 
 if __name__ == "__main__":

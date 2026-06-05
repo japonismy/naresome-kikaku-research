@@ -28,6 +28,24 @@ uv run --with google-cloud-bigquery python generate_portal_data_bq.py
 - `data/transcripts_light.js`
 - `reports/build_summary.json`
 - `reports/thumbnail_text_missing.csv`
+- `reports/target_channels.csv`
+
+## 対象チャンネル
+
+デフォルトの検索対象は以下です。
+
+- `owned_current`
+- `competitor` かつ公開動画あり
+- `migration_or_related_competitor`
+
+対象外:
+
+- `inactive_or_no_public_videos`
+- `exclude_from_naresome_competitor_analysis`
+- `adjacent_out_of_scope`
+- `owned_legacy`
+
+現在の対象・対象外一覧は `reports/target_channels.csv` に出力します。
 
 ローカルから手動で再生成して公開する場合:
 

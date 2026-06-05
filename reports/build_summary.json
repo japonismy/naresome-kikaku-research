@@ -4,5 +4,7 @@
   "videos_missing_thumbnail_text": 3535,
   "description_digests": 8365,
   "digest_chars_per_video": 1600,
+  "target_channels": 27,
+  "excluded_channels": 8,
   "source": "bigquery"
 }
