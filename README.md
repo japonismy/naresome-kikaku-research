@@ -2,6 +2,16 @@
 
 2ch馴れ初め系の企画検索ページです。
 
+## GCP/BQ/GCS 認証
+
+BigQuery、GCS、OAuth/ADC認証は `japonismy@gmail.com` に集約して運用します。
+
+YouTube用アカウントと混同しやすいため、GCP/BQ/GCS作業前は必ず `gcloud auth list` と `gcloud config list` で active account を確認します。
+
+詳細:
+
+`C:\Data\ObsidianVault\02_Channels\馴れ初めシネマ\analysis\BQ_GCP_ACCOUNT_POLICY_20260606.md`
+
 公開URL:
 
 https://japonismy.github.io/naresome-kikaku-research/
