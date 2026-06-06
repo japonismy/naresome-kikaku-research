@@ -58,6 +58,11 @@ Rules:
 - Return JSON only.
 """
 
+TEXT_ONLY_PROMPT = """This is a Japanese YouTube thumbnail.
+Extract only the visible text written on the image.
+Return plain text only. Do not include explanations. Do not use the YouTube title unless it is visible in the image.
+"""
+
 
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -66,6 +71,7 @@ def main() -> int:
     ap.add_argument("--min-views", type=int, default=0)
     ap.add_argument("--model", default=MODEL_ID)
     ap.add_argument("--batch-size", type=int, default=20)
+    ap.add_argument("--use-page-missing-only", action="store_true", default=True)
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -76,6 +82,8 @@ def main() -> int:
     if args.limit:
         targets = targets[: args.limit]
     print(json.dumps({"targets": len(targets), "model": args.model, "dry_run": args.dry_run}, ensure_ascii=False), flush=True)
+    if args.dry_run:
+        return 0
 
     rows = []
     pending_bq_rows = []
@@ -129,34 +137,41 @@ def load_genai_client():
 
 
 def load_targets(client: bigquery.Client, min_views: int) -> list[dict[str, object]]:
-    existing = load_existing_ocr_ids(client)
     text = (HERE / "data" / "videos.js").read_text(encoding="utf-8")
     videos = json.loads(text.removeprefix("window.VIDEO_DATA = ").strip().rstrip(";"))
-    targets = [
+    candidates = [
         v
         for v in videos
         if not (v.get("thumbnail_text") or "").strip()
-        and v["video_id"] not in existing
         and int(v.get("view_count") or 0) >= min_views
         and find_thumbnail(v["video_id"])
     ]
+    existing = load_existing_ocr_ids(client, [v["video_id"] for v in candidates])
+    targets = [v for v in candidates if v["video_id"] not in existing]
     targets.sort(key=lambda v: int(v.get("view_count") or 0), reverse=True)
     return targets
 
 
-def load_existing_ocr_ids(client: bigquery.Client) -> set[str]:
+def load_existing_ocr_ids(client: bigquery.Client, video_ids: list[str]) -> set[str]:
+    if not video_ids:
+        return set()
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[bigquery.ArrayQueryParameter("video_ids", "STRING", video_ids)]
+    )
     rows = client.query(
         f"""
         SELECT video_id
         FROM `{PROJECT_ID}.{DATASET}.{TABLE}`
         WHERE video_id IS NOT NULL
+          AND video_id IN UNNEST(@video_ids)
           AND (
             COALESCE(combined_text, '') != ''
             OR COALESCE(emphasis_text, '') != ''
             OR COALESCE(narration_text, '') != ''
             OR COALESCE(dialogue_text, '') != ''
           )
-        """
+        """,
+        job_config=job_config,
     ).result()
     return {r.video_id for r in rows}
 
@@ -180,7 +195,20 @@ def ocr_image(client, model_id: str, image_path: Path) -> dict:
         contents=[PROMPT, image_part],
         config=types.GenerateContentConfig(temperature=0.0, response_mime_type="application/json"),
     )
-    return parse_json(resp.text or "")
+    try:
+        return parse_json(resp.text or "")
+    except json.JSONDecodeError:
+        fallback = client.models.generate_content(
+            model=model_id,
+            contents=[TEXT_ONLY_PROMPT, image_part],
+            config=types.GenerateContentConfig(temperature=0.0),
+        )
+        text = clean_text(fallback.text or "")
+        return {
+            "texts": [{"position": "center", "text": text, "category": "narration", "emphasis": True}],
+            "combined": text,
+            "notes": "text_only_fallback",
+        }
 
 
 def parse_json(text: str) -> dict:
