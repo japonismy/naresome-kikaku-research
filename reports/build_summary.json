@@ -1,8 +1,8 @@
 {
-  "videos": 5466,
+  "videos": 5470,
   "videos_with_thumbnail_text": 5445,
-  "videos_missing_thumbnail_text": 21,
-  "description_digests": 5386,
+  "videos_missing_thumbnail_text": 25,
+  "description_digests": 5390,
   "digest_chars_per_video": 1600,
   "videos_with_script_asset": 1995,
   "videos_with_script_gcs_uri": 1995,
