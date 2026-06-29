@@ -1,6 +1,6 @@
 ﻿is_target,channel_id,title,relation_type,analysis_status,video_count
 True,UC9M17Nb4VrBTCynrJSTMj6Q,2ch馴れ初めラブレター,competitor,active,590
-True,UCIJONPMEYWDjyz07oNx55Pw,2ch馴れ初め奇跡の出会い,competitor,active,580
+True,UCIJONPMEYWDjyz07oNx55Pw,2ch馴れ初め奇跡の出会い,competitor,active,581
 True,UCf-5TwO_qhozUjT_t7wFo7g,2ch馴れ初めキューピッド,competitor,active,507
 True,UCGAn8ks-dTNfJK7i9LgSBvQ,2ch馴れ初めで愛を語る,competitor,active,495
 True,UCqaL3Zr-4tF2AjQziFuhelg,2ch 馴れ初め ストーリーズ,competitor,active,494
@@ -22,7 +22,7 @@ True,UC_3xqtULO8iMQFJuyw3RSlA,2ch感動の馴れ初め話,migration_or_related_c
 True,UCaltBBIFhAqt8_ECttdKgsw,2ch馴れ初め感動シネマ,owned_current,active,369
 False,UCjGDnDv-xiCCaGwO27lZbPw,2ch面白しゅらばなし,adjacent_out_of_scope,exclude_from_naresome_competitor_analysis,1666
 False,UC5qxS4hFAhSqPXNIZ-j4h-A,思い出のゆっくり2ch,competitor,active,974
-False,UCj_9E9bot7tURW10az9_Diw,ゆっくり2chのちゃんちゃん,competitor,active,795
+False,UCj_9E9bot7tURW10az9_Diw,ゆっくり2chのちゃんちゃん,competitor,active,796
 False,UCNgCovRcGFrH1qe5uwJ5utg,2chほのぼのちゃんちゃん,competitor,active,487
 False,UCdyUNf43th0WS72Iaxyi2Pw,レモネードハイツ,competitor,active,437
 False,UC4z1Nn5WWnjFZ7_mtpAq-0w,ゆっくり2ch語り,competitor,active,371
