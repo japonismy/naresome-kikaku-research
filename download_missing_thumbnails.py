@@ -12,7 +12,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 OUT_DIR = HERE / "gcs_upload_staging" / "naresome_thumbnails"
-REPORT_PATH = HERE / "reports" / "downloaded_missing_thumbnails.csv"
+REPORT_PATH = HERE / "reports" / "downloaded_thumbnails.csv"
 
 
 def main() -> int:
@@ -20,11 +20,17 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=0, help="0 means all.")
     ap.add_argument("--sleep", type=float, default=0.05)
     ap.add_argument("--overwrite", action="store_true")
+    ap.add_argument(
+        "--mode",
+        choices=["all", "missing"],
+        default="all",
+        help="all preserves every thumbnail locally; missing only downloads rows without thumbnail_gcs_uri.",
+    )
     args = ap.parse_args()
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     videos = load_videos()
-    targets = [v for v in videos if not v.get("thumbnail_gcs_uri")]
+    targets = [v for v in videos if args.mode == "all" or not v.get("thumbnail_gcs_uri")]
     targets.sort(key=lambda v: int(v.get("view_count") or 0), reverse=True)
     if args.limit:
         targets = targets[: args.limit]
@@ -36,11 +42,11 @@ def main() -> int:
         video_id = video["video_id"]
         out = OUT_DIR / f"{video_id}.jpg"
         if out.exists() and not args.overwrite:
-            rows.append(row(video, "existing", str(out), out.stat().st_size, ""))
+            rows.append(row(video, "existing", "", str(out), out.stat().st_size, ""))
             skipped += 1
             continue
         result = download_best(video_id, out)
-        rows.append(row(video, result["quality"], str(out) if out.exists() else "", result["bytes"], result["error"]))
+        rows.append(row(video, result["quality"], result["url"], str(out) if out.exists() else "", result["bytes"], result["error"]))
         if out.exists():
             ok += 1
         else:
@@ -48,7 +54,19 @@ def main() -> int:
         time.sleep(args.sleep)
 
     write_report(merge_rows(existing, rows))
-    print(json.dumps({"targets": len(targets), "ok": ok, "fail": fail, "skipped_existing": skipped, "report": str(REPORT_PATH)}, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "mode": args.mode,
+                "targets": len(targets),
+                "ok": ok,
+                "fail": fail,
+                "skipped_existing": skipped,
+                "report": str(REPORT_PATH),
+            },
+            ensure_ascii=False,
+        )
+    )
     return 0
 
 
@@ -73,19 +91,20 @@ def download_best(video_id: str, out: Path) -> dict[str, object]:
                 last_error = f"{quality}: too small"
                 continue
             out.write_bytes(data)
-            return {"quality": quality, "bytes": len(data), "error": ""}
+            return {"quality": quality, "url": url, "bytes": len(data), "error": ""}
         except (urllib.error.URLError, TimeoutError) as e:
             last_error = f"{quality}: {type(e).__name__}"
-    return {"quality": "", "bytes": 0, "error": last_error}
+    return {"quality": "", "url": "", "bytes": 0, "error": last_error}
 
 
-def row(video: dict, quality: str, local_path: str, bytes_size: int, error: str) -> dict[str, object]:
+def row(video: dict, quality: str, source_url: str, local_path: str, bytes_size: int, error: str) -> dict[str, object]:
     return {
         "video_id": video.get("video_id", ""),
         "channel": video.get("channel", ""),
         "title": video.get("title", ""),
         "view_count": video.get("view_count", 0),
         "quality": quality,
+        "source_url": source_url,
         "local_path": local_path,
         "bytes": bytes_size,
         "error": error,
@@ -104,12 +123,26 @@ def merge_rows(existing: dict[str, dict], rows: list[dict]) -> list[dict]:
     for item in rows:
         if item.get("video_id"):
             merged[item["video_id"]] = item
-    return list(merged.values())
+    return [normalize_report_row(row) for row in merged.values()]
+
+
+def normalize_report_row(row: dict) -> dict:
+    return {
+        "video_id": row.get("video_id", ""),
+        "channel": row.get("channel", ""),
+        "title": row.get("title", ""),
+        "view_count": row.get("view_count", 0),
+        "quality": row.get("quality", ""),
+        "source_url": row.get("source_url", ""),
+        "local_path": row.get("local_path", ""),
+        "bytes": row.get("bytes", 0),
+        "error": row.get("error", ""),
+    }
 
 
 def write_report(rows: list[dict]) -> None:
     REPORT_PATH.parent.mkdir(exist_ok=True)
-    fields = ["video_id", "channel", "title", "view_count", "quality", "local_path", "bytes", "error"]
+    fields = ["video_id", "channel", "title", "view_count", "quality", "source_url", "local_path", "bytes", "error"]
     with REPORT_PATH.open("w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=fields)
         writer.writeheader()

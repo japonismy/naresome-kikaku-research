@@ -61,6 +61,9 @@ def load_target_ids() -> set[str]:
 
 def stage_thumbnails(target_ids: set[str]) -> list[dict[str, object]]:
     staged = existing_staged_thumbnails(target_ids)
+    if not DB_PATH.exists():
+        return sorted(staged.values(), key=lambda r: r["video_id"])
+
     con = sqlite3.connect(str(DB_PATH))
     con.row_factory = sqlite3.Row
     try:

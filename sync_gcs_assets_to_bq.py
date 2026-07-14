@@ -32,7 +32,10 @@ def load_csv(path: Path) -> list[dict[str, str]]:
 
 
 def load_thumbnail_assets(client: bigquery.Client, rows: list[dict[str, str]]) -> None:
+    if not rows:
+        return
     table_id = f"{PROJECT_ID}.{DATASET}.thumbnail_assets"
+    tmp_table = f"{PROJECT_ID}.{DATASET}._thumbnail_asset_gcs_updates"
     payload = [
         {
             "video_id": r.get("video_id", ""),
@@ -43,6 +46,8 @@ def load_thumbnail_assets(client: bigquery.Client, rows: list[dict[str, str]]) -
         for r in rows
         if r.get("video_id")
     ]
+    if not payload:
+        return
     job_config = bigquery.LoadJobConfig(
         schema=[
             bigquery.SchemaField("video_id", "STRING", mode="REQUIRED"),
@@ -52,7 +57,20 @@ def load_thumbnail_assets(client: bigquery.Client, rows: list[dict[str, str]]) -
         ],
         write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
     )
-    client.load_table_from_json(payload, table_id, job_config=job_config).result()
+    client.load_table_from_json(payload, tmp_table, job_config=job_config).result()
+    client.query(
+        f"""
+        MERGE `{table_id}` t
+        USING `{tmp_table}` u
+        ON t.video_id = u.video_id
+        WHEN MATCHED THEN UPDATE SET
+          gcs_uri = u.gcs_uri,
+          bytes = u.bytes,
+          error = u.error
+        WHEN NOT MATCHED THEN INSERT (video_id, gcs_uri, bytes, error)
+        VALUES (u.video_id, u.gcs_uri, u.bytes, u.error)
+        """
+    ).result()
 
 
 def update_script_assets(client: bigquery.Client, rows: list[dict[str, str]]) -> None:

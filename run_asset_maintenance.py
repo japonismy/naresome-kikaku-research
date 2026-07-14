@@ -23,6 +23,7 @@ def main() -> int:
 
     ensure_gcloud_account()
     run([sys.executable, "inventory_script_assets.py", "--export-csv-assets"])
+    run([sys.executable, "download_missing_thumbnails.py", "--mode", "all"])
     run([sys.executable, "prepare_gcs_assets.py"])
 
     if not args.skip_upload:

@@ -108,7 +108,7 @@ python prepare_gcs_assets.py
 GCS未登録サムネをYouTubeから再取得:
 
 ```powershell
-python download_missing_thumbnails.py
+python download_missing_thumbnails.py --mode all
 python prepare_gcs_assets.py
 python run_asset_maintenance.py
 ```
@@ -140,6 +140,37 @@ python run_asset_maintenance.py --deploy
 ```
 
 このバッチは `gcloud` のアカウントを `japonismy@gmail.com`、プロジェクトを `rugged-destiny-408613` に揃えてから実行します。
+
+## サムネ画像の保全方針
+
+YouTubeのサムネURLは、動画削除・非公開・差し替えで404になるため、分析対象に入れた動画のサムネは原則として実画像を保存します。
+
+保存先:
+
+```text
+gcs_upload_staging/naresome_thumbnails/{video_id}.jpg
+gs://senior-share-staging-570862915709/naresome_thumbnails/{video_id}.jpg
+```
+
+既存GCS画像をローカルに戻す場合:
+
+```powershell
+gcloud storage rsync gs://senior-share-staging-570862915709/naresome_thumbnails gcs_upload_staging/naresome_thumbnails --recursive
+```
+
+現行ページ対象のサムネを全件ローカル保存する場合:
+
+```powershell
+python download_missing_thumbnails.py --mode all
+```
+
+未保存分だけ確認する場合:
+
+```powershell
+python download_missing_thumbnails.py --mode missing
+```
+
+`sync_gcs_assets_to_bq.py` は既存の `thumbnail_assets` を消さず、マニフェストにある動画IDだけを追加・更新します。
 
 ローカルから手動で再生成して公開する場合:
 
