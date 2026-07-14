@@ -269,7 +269,17 @@
       channelSelect.innerHTML = '<option value="">すべて</option>' + channels.map(c => `<option value="${escapeAttr(c)}">${escapeHtml(c)} (${counts.get(c)})</option>`).join("");
       document.getElementById("searchBtn").addEventListener("click", render);
       document.getElementById("q").addEventListener("keydown", e => { if (e.key === "Enter") render(); });
-      document.getElementById("closeBtn").addEventListener("click", () => document.getElementById("dialog").close());
+      const dialog = document.getElementById("dialog");
+      document.getElementById("closeBtn").addEventListener("click", () => dialog.close());
+      dialog.addEventListener("click", e => {
+        const rect = dialog.getBoundingClientRect();
+        const isBackdropClick =
+          e.clientX < rect.left ||
+          e.clientX > rect.right ||
+          e.clientY < rect.top ||
+          e.clientY > rect.bottom;
+        if (isBackdropClick) dialog.close();
+      });
       render();
     }
 
