@@ -1,0 +1,20 @@
+{
+  "restored_rows": 1,
+  "candidate_rows": 17,
+  "source_video_id": "lKrLCflkdeU",
+  "copy_video_id": "unbALz2a8Yk",
+  "source_view_count": 78808,
+  "copy_view_count_current": 18460,
+  "copy_published": "2026-04-25T03:30:37-07:00",
+  "thumbnail_path": "gcs_upload_staging\\naresome_thumbnails\\lKrLCflkdeU.jpg",
+  "thumbnail_bytes": 341048,
+  "thumbnail_dims": [
+    1280,
+    720
+  ],
+  "thumbnail_gcs_uri": "gs://senior-share-staging-570862915709/naresome_thumbnails/lKrLCflkdeU.jpg",
+  "script_status": "linked_to_existing_copy_script_asset",
+  "script_gcs_uri": "gs://senior-share-staging-570862915709/naresome_script_csv/unbALz2a8Yk.csv",
+  "candidate_rows_with_title": 10,
+  "candidate_rows_id_only": 7
+}
