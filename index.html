@@ -299,21 +299,21 @@
         return { v, hit };
       }).filter(({ v, hit }) => {
         if (channel && v.channel !== channel) return false;
-        if ((v.view_count || 0) < minViews) return false;
+        if (observedViews(v) < minViews) return false;
         if (dateFrom && (!v.published_at || v.published_at.slice(0, 10) < dateFrom)) return false;
         if (missingThumbnailTextOnly && (v.thumbnail_text || "").trim()) return false;
         if (terms.length && !hit.ok) return false;
         return true;
       });
 
-      if (sort === "views_desc") rows.sort((a, b) => (b.v.view_count || 0) - (a.v.view_count || 0));
-      if (sort === "likes_desc") rows.sort((a, b) => (b.v.like_count || 0) - (a.v.like_count || 0));
-      if (sort === "comments_desc") rows.sort((a, b) => (b.v.comment_count || 0) - (a.v.comment_count || 0));
-      if (sort === "like_rate_desc") rows.sort((a, b) => rateValue(b.v.like_count, b.v.view_count) - rateValue(a.v.like_count, a.v.view_count));
-      if (sort === "comment_rate_desc") rows.sort((a, b) => rateValue(b.v.comment_count, b.v.view_count) - rateValue(a.v.comment_count, a.v.view_count));
+      if (sort === "views_desc") rows.sort((a, b) => observedViews(b.v) - observedViews(a.v));
+      if (sort === "likes_desc") rows.sort((a, b) => observedLikes(b.v) - observedLikes(a.v));
+      if (sort === "comments_desc") rows.sort((a, b) => observedComments(b.v) - observedComments(a.v));
+      if (sort === "like_rate_desc") rows.sort((a, b) => rateValue(observedLikes(b.v), observedViews(b.v)) - rateValue(observedLikes(a.v), observedViews(a.v)));
+      if (sort === "comment_rate_desc") rows.sort((a, b) => rateValue(observedComments(b.v), observedViews(b.v)) - rateValue(observedComments(a.v), observedViews(a.v)));
       if (sort === "date_desc") rows.sort((a, b) => String(b.v.published_at).localeCompare(String(a.v.published_at)));
       if (sort === "date_asc") rows.sort((a, b) => String(a.v.published_at).localeCompare(String(b.v.published_at)));
-      if (sort === "relevance") rows.sort((a, b) => b.hit.score - a.hit.score || (b.v.view_count || 0) - (a.v.view_count || 0));
+      if (sort === "relevance") rows.sort((a, b) => b.hit.score - a.hit.score || observedViews(b.v) - observedViews(a.v));
 
       const limited = rows.slice(0, 500);
       status.textContent = `表示 ${fmt.format(limited.length)}件 / ヒット ${fmt.format(rows.length)}件 / 全 ${fmt.format(videos.length)}件`;
@@ -404,6 +404,18 @@
       const row = [v.video_id, v.channel || "", v.title || "", v.youtube_url, preferredThumbnail(v), v.published_at || "", v.fetched_at || "", v.view_count || 0, v.like_count || 0, v.comment_count || 0, rateText(v.like_count, v.view_count), rateText(v.comment_count, v.view_count), t ? t.digest : ""];
       const csv = ["video_id,channel,title,youtube_url,thumbnail_url,published_at,fetched_at,view_count,like_count,comment_count,like_rate,comment_rate,digest", row.map(csvCell).join(",")].join("\n");
       downloadBlob(`${downloadBaseName(v)}.csv`, csv, "text/csv;charset=utf-8");
+    }
+
+    function observedViews(v) {
+      return Number(v.max_observed_view_count || v.observed_view_count || v.view_count || 0);
+    }
+
+    function observedLikes(v) {
+      return Number(v.observed_like_count || v.like_count || 0);
+    }
+
+    function observedComments(v) {
+      return Number(v.observed_comment_count || v.comment_count || 0);
     }
 
     function rateValue(count, views) {

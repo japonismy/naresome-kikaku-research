@@ -12,15 +12,19 @@ PROJECT_ID = "rugged-destiny-408613"
 DATASET = "naresome_all"
 DATA_DIR = Path("data")
 REPORT_DIR = Path("reports")
+SOURCE_DIR = Path("data_sources")
+OBSERVED_SUPPLEMENT_CSV = SOURCE_DIR / "observed_archive_supplement.csv"
 DIGEST_CHARS = 1600
 
 
 def main() -> int:
     DATA_DIR.mkdir(exist_ok=True)
     REPORT_DIR.mkdir(exist_ok=True)
+    SOURCE_DIR.mkdir(exist_ok=True)
     client = bigquery.Client(project=PROJECT_ID)
 
     videos = []
+    video_by_id = {}
     descriptions = []
     missing = []
     for row in client.query(video_query()).result():
@@ -63,8 +67,27 @@ def main() -> int:
             "tags": parse_tags(row.tags),
             "source_type": row.source_type or "current",
             "is_archive": row.source_type == "archive",
+            "archive_type": "stopped_channel_archive" if row.source_type == "archive" else "current_monitoring",
+            "observed_view_count": row.view_count or 0,
+            "observed_like_count": row.like_count or 0,
+            "observed_comment_count": row.comment_count or 0,
+            "observed_at": row.fetched_at or "",
+            "max_observed_view_count": row.view_count or 0,
+            "latest_observed_at": row.fetched_at or "",
+            "observation_sources": [row.source_type or "current"],
+            "observation_history": [
+                {
+                    "observed_at": row.fetched_at or "",
+                    "view_count": row.view_count or 0,
+                    "like_count": row.like_count or 0,
+                    "comment_count": row.comment_count or 0,
+                    "source_name": row.source_type or "current",
+                    "archive_type": "stopped_channel_archive" if row.source_type == "archive" else "current_monitoring",
+                }
+            ],
         }
         videos.append(item)
+        video_by_id[vid] = item
         if not thumb_text:
             missing.append(
                 {
@@ -90,6 +113,8 @@ def main() -> int:
                 }
             )
 
+    supplement_summary = load_observed_supplements(videos, video_by_id)
+    videos.sort(key=lambda v: int_value(v.get("max_observed_view_count", v.get("view_count", 0))), reverse=True)
     write_js(DATA_DIR / "videos.js", "VIDEO_DATA", videos)
     write_js(DATA_DIR / "transcripts_light.js", "TRANSCRIPT_DATA", descriptions)
     write_missing_csv(REPORT_DIR / "thumbnail_text_missing.csv", missing)
@@ -105,6 +130,10 @@ def main() -> int:
         "videos_with_script_gcs_uri": sum(1 for v in videos if v["script_gcs_uri"]),
         "videos_with_script_csv_url": sum(1 for v in videos if v["script_csv_url"]),
         "videos_with_thumbnail_gcs_uri": sum(1 for v in videos if v["thumbnail_gcs_uri"]),
+        "videos_from_observed_supplement": supplement_summary["inserted"],
+        "videos_updated_by_observed_supplement": supplement_summary["updated"],
+        "observed_supplement_rows": supplement_summary["rows"],
+        "observed_supplement_path": str(OBSERVED_SUPPLEMENT_CSV),
         "target_channels": sum(1 for c in channels if c.is_target),
         "excluded_channels": sum(1 for c in channels if not c.is_target),
         "source": "bigquery",
@@ -259,6 +288,127 @@ def parse_tags(value: object) -> list[str]:
     except Exception:
         pass
     return [x.strip() for x in text.replace("、", ",").split(",") if x.strip()]
+
+
+def load_observed_supplements(videos: list[dict[str, object]], video_by_id: dict[str, dict[str, object]]) -> dict[str, int]:
+    summary = {"rows": 0, "inserted": 0, "updated": 0}
+    if not OBSERVED_SUPPLEMENT_CSV.exists():
+        return summary
+
+    with OBSERVED_SUPPLEMENT_CSV.open("r", newline="", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            vid = compact_text(row.get("video_id", ""))
+            if not vid:
+                continue
+            summary["rows"] += 1
+            observed = {
+                "observed_at": compact_text(row.get("observed_at", "")),
+                "view_count": int_value(row.get("observed_view_count")),
+                "like_count": int_value(row.get("observed_like_count")),
+                "comment_count": int_value(row.get("observed_comment_count")),
+                "source_name": compact_text(row.get("source_name", "")) or "observed_archive_supplement",
+                "archive_type": compact_text(row.get("archive_type", "")) or "competitor_sheet_archive",
+            }
+            if vid in video_by_id:
+                merge_observation(video_by_id[vid], observed)
+                summary["updated"] += 1
+                continue
+
+            item = make_supplement_video(vid, row, observed)
+            videos.append(item)
+            video_by_id[vid] = item
+            summary["inserted"] += 1
+    return summary
+
+
+def make_supplement_video(video_id: str, row: dict[str, str], observed: dict[str, object]) -> dict[str, object]:
+    thumbnail_url = compact_text(row.get("thumbnail_url", "")) or f"https://i.ytimg.com/vi/{video_id}/maxresdefault.jpg"
+    thumbnail_gcs_uri = compact_text(row.get("thumbnail_gcs_uri", ""))
+    saved_url = compact_text(row.get("thumbnail_saved_url", "")) or gcs_public_url(thumbnail_gcs_uri)
+    archive_type = str(observed["archive_type"])
+    return {
+        "video_id": video_id,
+        "channel_id": compact_text(row.get("channel_id", "")),
+        "channel": compact_text(row.get("channel_title", "")),
+        "title": compact_text(row.get("video_title", "")),
+        "published_at": compact_text(row.get("published_at", "")),
+        "duration_sec": None,
+        "view_count": observed["view_count"],
+        "like_count": observed["like_count"],
+        "comment_count": observed["comment_count"],
+        "thumbnail_url": thumbnail_url,
+        "thumbnail_gcs_uri": thumbnail_gcs_uri,
+        "thumbnail_saved_url": saved_url,
+        "thumbnail_max_url": f"https://i.ytimg.com/vi/{video_id}/maxresdefault.jpg",
+        "thumbnail_fallback_urls": [
+            saved_url,
+            f"https://i.ytimg.com/vi/{video_id}/sddefault.jpg",
+            f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg",
+            thumbnail_url,
+        ],
+        "youtube_url": f"https://www.youtube.com/watch?v={video_id}",
+        "fetched_at": observed["observed_at"],
+        "thumbnail_text": "",
+        "thumbnail_analysis": {
+            "main_subject": "",
+            "people": "",
+            "setting": "",
+            "composition": "",
+            "emotion_appeal": "",
+            "story_hook": "",
+        },
+        "script_asset_available": False,
+        "script_gcs_uri": "",
+        "script_csv_url": "",
+        "tags": ["observed_archive", archive_type],
+        "source_type": "observed_archive",
+        "is_archive": True,
+        "archive_type": archive_type,
+        "observed_view_count": observed["view_count"],
+        "observed_like_count": observed["like_count"],
+        "observed_comment_count": observed["comment_count"],
+        "observed_at": observed["observed_at"],
+        "max_observed_view_count": observed["view_count"],
+        "latest_observed_at": observed["observed_at"],
+        "observation_sources": [observed["source_name"]],
+        "observation_history": [observed],
+    }
+
+
+def merge_observation(item: dict[str, object], observed: dict[str, object]) -> None:
+    history = item.setdefault("observation_history", [])
+    if isinstance(history, list):
+        history.append(observed)
+
+    sources = item.setdefault("observation_sources", [])
+    source_name = str(observed["source_name"])
+    if isinstance(sources, list) and source_name not in sources:
+        sources.append(source_name)
+
+    item["max_observed_view_count"] = max(
+        int_value(item.get("max_observed_view_count")),
+        int_value(observed.get("view_count")),
+    )
+    if int_value(observed.get("view_count")) >= int_value(item.get("observed_view_count")):
+        item["observed_view_count"] = observed["view_count"]
+        item["observed_like_count"] = observed["like_count"]
+        item["observed_comment_count"] = observed["comment_count"]
+        item["observed_at"] = observed["observed_at"]
+        item["view_count"] = observed["view_count"]
+        item["like_count"] = observed["like_count"]
+        item["comment_count"] = observed["comment_count"]
+        item["fetched_at"] = observed["observed_at"]
+    if str(observed.get("observed_at", "")) >= str(item.get("latest_observed_at", "")):
+        item["latest_observed_at"] = observed["observed_at"]
+
+
+def int_value(value: object) -> int:
+    text = str(value or "").replace(",", "").strip()
+    try:
+        return int(float(text))
+    except ValueError:
+        return 0
 
 
 def gcs_public_url(uri: str) -> str:
