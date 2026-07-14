@@ -352,6 +352,7 @@
       const badges = hit.fields.length
         ? hit.fields.map(x => `<span class="badge hit">${escapeHtml(x)}</span>`).join("")
         : (v.thumbnail_text ? "" : '<span class="badge warn">サムネ文字未整備</span>');
+      const sourceBadge = v.is_archive ? '<span class="badge">アーカイブ</span>' : "";
       return `<article class="card" data-idx="${idx}">
         <img src="${escapeAttr(preferredThumbnail(v))}" alt="" loading="lazy" onerror="fallbackImage(this, ${idx})">
         <div class="meta">
@@ -359,7 +360,7 @@
           <div class="title">${escapeHtml(v.title || "")}</div>
           <div class="row"><span>高評価 ${fmt.format(v.like_count || 0)} / ${rateText(v.like_count, v.view_count)}</span><span>コメント ${fmt.format(v.comment_count || 0)} / ${rateText(v.comment_count, v.view_count)}</span></div>
           <div class="row"><span>${date}</span><span>${escapeHtml(v.video_id)}</span></div>
-          <div class="badges">${badges}</div>
+          <div class="badges">${sourceBadge}${badges}</div>
         </div>
       </article>`;
     }
@@ -378,6 +379,7 @@
         `コメント: ${fmt.format(v.comment_count || 0)} / コメント率 ${rateText(v.comment_count, v.view_count)}`,
         `公開日: ${escapeHtml((v.published_at || "").slice(0, 10) || "日付なし")}`,
         `更新日: ${escapeHtml(formatDateTime(v.fetched_at) || "不明")}`,
+        `source: ${escapeHtml(v.source_type || "current")}`,
         `video_id: ${escapeHtml(v.video_id)}`
       ].map(x => `<div>${x}</div>`).join("");
       document.getElementById("detailThumbnailText").textContent = v.thumbnail_text || "未整備";

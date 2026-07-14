@@ -61,6 +61,8 @@ def main() -> int:
             "script_gcs_uri": row.gcs_csv_uri or "",
             "script_csv_url": row.public_csv_url or "",
             "tags": parse_tags(row.tags),
+            "source_type": row.source_type or "current",
+            "is_archive": row.source_type == "archive",
         }
         videos.append(item)
         if not thumb_text:
@@ -145,12 +147,53 @@ def video_query() -> str:
       v.thumbnail_url_max AS thumbnail_url,
       v.tags,
       v.fetched_at,
+      v.source_type,
       o.thumbnail_text,
       IF(sa.video_id IS NOT NULL AND sa.asset_count > 0, TRUE, FALSE) AS script_asset_available,
       sa.gcs_csv_uri,
       sa.public_csv_url,
       ta.gcs_uri AS thumbnail_gcs_uri
-    FROM `{PROJECT_ID}.{DATASET}.videos` v
+    FROM (
+      SELECT
+        'current' AS source_type,
+        video_id,
+        channel_id,
+        title,
+        description,
+        published_at,
+        duration_sec,
+        view_count,
+        like_count,
+        comment_count,
+        thumbnail_url_max,
+        tags,
+        fetched_at
+      FROM `{PROJECT_ID}.{DATASET}.videos`
+      UNION ALL
+      SELECT
+        'archive' AS source_type,
+        a.video_id,
+        a.channel_id,
+        a.title,
+        a.description,
+        a.published_at,
+        a.duration_sec,
+        a.view_count,
+        a.like_count,
+        a.comment_count,
+        a.thumbnail_url_max,
+        CASE
+          WHEN a.tags IS NULL OR a.tags = '' THEN '["archive"]'
+          ELSE a.tags
+        END AS tags,
+        a.fetched_at
+      FROM `{PROJECT_ID}.{DATASET}.videos_archive_20260527` a
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM `{PROJECT_ID}.{DATASET}.videos` cur
+        WHERE cur.video_id = a.video_id
+      )
+    ) v
     JOIN `{PROJECT_ID}.{DATASET}.channels` c
       USING(channel_id)
     LEFT JOIN ocr o
@@ -163,6 +206,10 @@ def video_query() -> str:
       AND v.thumbnail_url_max != ''
       AND COALESCE(c.relation_type, 'competitor') IN ('owned_current', 'competitor', 'migration_or_related_competitor')
       AND COALESCE(c.analysis_status, 'active') NOT IN ('exclude_from_naresome_competitor_analysis')
+      AND (
+        v.source_type = 'archive'
+        OR COALESCE(c.analysis_status, 'active') NOT IN ('inactive_or_no_public_videos')
+      )
       AND (
         c.channel_id IN ('UCMKCAHo4JFbXD2J77nWSswQ')
         OR REGEXP_CONTAINS(NORMALIZE(COALESCE(c.title, ''), NFKC), r'(馴れ初め|馴初め|なれそめ)')
