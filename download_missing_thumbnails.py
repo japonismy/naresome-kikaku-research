@@ -82,6 +82,7 @@ def download_best(video_id: str, out: Path) -> dict[str, object]:
         ("hqdefault", f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"),
     ]
     last_error = ""
+    best = None
     for quality, url in candidates:
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
@@ -90,11 +91,55 @@ def download_best(video_id: str, out: Path) -> dict[str, object]:
             if len(data) < 2048:
                 last_error = f"{quality}: too small"
                 continue
-            out.write_bytes(data)
-            return {"quality": quality, "url": url, "bytes": len(data), "error": ""}
+            width, height = jpeg_dimensions(data)
+            if width * height < 320 * 180:
+                last_error = f"{quality}: too small dimensions {width}x{height}"
+                continue
+            item = {
+                "quality": quality,
+                "url": url,
+                "bytes": len(data),
+                "error": "",
+                "width": width,
+                "height": height,
+                "data": data,
+            }
+            if not best or (width * height, len(data)) > (best["width"] * best["height"], best["bytes"]):
+                best = item
         except (urllib.error.URLError, TimeoutError) as e:
             last_error = f"{quality}: {type(e).__name__}"
+    if best:
+        out.write_bytes(best.pop("data"))
+        return best
     return {"quality": "", "url": "", "bytes": 0, "error": last_error}
+
+
+def jpeg_dimensions(data: bytes) -> tuple[int, int]:
+    if data[:2] != b"\xff\xd8":
+        return (0, 0)
+    i = 2
+    while i < len(data):
+        if data[i] != 0xFF:
+            i += 1
+            continue
+        while i < len(data) and data[i] == 0xFF:
+            i += 1
+        if i >= len(data):
+            break
+        marker = data[i]
+        i += 1
+        if marker in (0xD8, 0xD9):
+            continue
+        if i + 2 > len(data):
+            break
+        seglen = int.from_bytes(data[i : i + 2], "big")
+        if marker in (*range(0xC0, 0xC4), *range(0xC5, 0xC8), *range(0xC9, 0xCC), *range(0xCD, 0xD0)):
+            if i + 7 <= len(data):
+                height = int.from_bytes(data[i + 3 : i + 5], "big")
+                width = int.from_bytes(data[i + 5 : i + 7], "big")
+                return (width, height)
+        i += seglen
+    return (0, 0)
 
 
 def row(video: dict, quality: str, source_url: str, local_path: str, bytes_size: int, error: str) -> dict[str, object]:
