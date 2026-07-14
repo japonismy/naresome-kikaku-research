@@ -85,7 +85,7 @@ def normalize_table(raw_rows: list[list[str]], source_name: str) -> list[dict[st
         return []
     headers = [compact(cell) for cell in raw_rows[header_idx]]
     indexes = build_indexes(headers)
-    required = ["video_url", "channel_title", "video_title", "view_count"]
+    required = ["video_url", "video_title", "view_count"]
     if any(key not in indexes for key in required):
         return []
 
@@ -96,11 +96,12 @@ def normalize_table(raw_rows: list[list[str]], source_name: str) -> list[dict[st
         if not video_id:
             continue
         observed_at = row.get("observed_at") or infer_observed_at(source_name)
+        channel_title = row.get("channel_title", "") or infer_channel_title(source_name)
         rows.append(
             {
                 "video_id": video_id,
-                "channel_id": "",
-                "channel_title": row.get("channel_title", ""),
+                "channel_id": row.get("channel_id", ""),
+                "channel_title": channel_title,
                 "video_title": row.get("video_title", ""),
                 "published_at": normalize_date(row.get("published_at", "")),
                 "observed_view_count": digits(row.get("view_count", "")),
@@ -120,7 +121,7 @@ def normalize_table(raw_rows: list[list[str]], source_name: str) -> list[dict[st
 def find_header_row(rows: list[list[str]]) -> int | None:
     for i, row in enumerate(rows[:10]):
         cells = [compact(cell) for cell in row]
-        if "動画URL" in cells and "チャンネル名" in cells and "視聴回数" in cells:
+        if ("動画URL" in cells or "URL" in cells) and ("動画タイトル" in cells or "タイトル" in cells) and ("視聴回数" in cells or "再生回数" in cells):
             return i
     return None
 
@@ -128,15 +129,17 @@ def find_header_row(rows: list[list[str]]) -> int | None:
 def build_indexes(headers: list[str]) -> dict[str, int]:
     mapping: dict[str, int] = {}
     for i, header in enumerate(headers):
-        if header == "動画URL":
+        if header == "チャンネルID":
+            mapping.setdefault("channel_id", i)
+        elif header in {"動画URL", "URL"}:
             mapping.setdefault("video_url", i)
-        elif header == "動画タイトル":
+        elif header in {"動画タイトル", "タイトル"}:
             mapping.setdefault("video_title", i)
         elif header == "チャンネル名":
             mapping.setdefault("channel_title", i)
-        elif header == "動画公開日":
+        elif header in {"動画公開日", "投稿日"}:
             mapping.setdefault("published_at", i)
-        elif header == "視聴回数":
+        elif header in {"視聴回数", "再生回数"}:
             mapping.setdefault("view_count", i)
         elif header == "コメント数":
             mapping.setdefault("comment_count", i)
@@ -191,6 +194,13 @@ def infer_observed_at(source_name: str) -> str:
         return ""
     text = match.group(0)
     return f"{text[:4]}-{text[4:6]}-{text[6:8]}"
+
+
+def infer_channel_title(source_name: str) -> str:
+    sheet_name = source_name.split(":", 1)[-1].strip()
+    if sheet_name.startswith("動画_"):
+        return sheet_name.replace("動画_", "", 1).strip()
+    return ""
 
 
 def normalize_date(value: str) -> str:

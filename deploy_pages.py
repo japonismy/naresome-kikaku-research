@@ -20,7 +20,7 @@ def run(cmd: list[str]) -> None:
 def main() -> int:
     run(["uv", "run", "--with", "openpyxl", "python", "build_observed_archive_supplement.py"])
     run(["uv", "run", "--with", "google-cloud-bigquery", "python", "generate_portal_data_bq.py"])
-    run(["git", "add", "."])
+    run(["git", "add", "data/videos.js", "reports/build_summary.json", "data_sources/observed_archive_supplement.csv"])
     status = subprocess.run(["git", "status", "--short"], cwd=HERE, text=True, encoding="utf-8", errors="replace", capture_output=True).stdout.strip()
     if not status:
         print("No changes to deploy.")

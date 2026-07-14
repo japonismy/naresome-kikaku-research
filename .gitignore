@@ -3,6 +3,8 @@ script_csv_assets/
 gcs_upload_staging/
 ocr_work/
 bq_sync_export/
+data_sources/competitor_sheet_exports/*
+!data_sources/competitor_sheet_exports/README.md
 __pycache__/
 *.pyc
 *.log
