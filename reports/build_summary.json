@@ -1,14 +1,14 @@
 {
-  "videos": 5614,
+  "videos": 5617,
   "videos_with_thumbnail_text": 5597,
-  "videos_missing_thumbnail_text": 17,
-  "description_digests": 5538,
+  "videos_missing_thumbnail_text": 20,
+  "description_digests": 5541,
   "digest_chars_per_video": 1600,
   "videos_with_script_asset": 1995,
   "videos_with_script_gcs_uri": 1995,
   "videos_with_script_csv_url": 0,
-  "videos_with_thumbnail_gcs_uri": 5613,
-  "target_channels": 22,
-  "excluded_channels": 13,
+  "videos_with_thumbnail_gcs_uri": 5616,
+  "target_channels": 24,
+  "excluded_channels": 11,
   "source": "bigquery"
 }
