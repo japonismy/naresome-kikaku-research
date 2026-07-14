@@ -416,12 +416,15 @@
     }
 
     function preferredThumbnail(v) {
-      return v.thumbnail_max_url || v.thumbnail_url || "";
+      return v.thumbnail_saved_url || v.thumbnail_max_url || v.thumbnail_url || "";
     }
 
     function fallbackImage(img, idx) {
       const v = videos[idx];
-      const urls = (v && v.thumbnail_fallback_urls ? v.thumbnail_fallback_urls : []).filter(Boolean);
+      const urls = [
+        v && v.thumbnail_saved_url,
+        ...(v && v.thumbnail_fallback_urls ? v.thumbnail_fallback_urls : []),
+      ].filter(Boolean);
       const current = img.src;
       const next = urls.find(url => !current.includes(url.split("/").pop()));
       if (next) img.src = next;

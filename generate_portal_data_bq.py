@@ -38,8 +38,10 @@ def main() -> int:
             "comment_count": row.comment_count or 0,
             "thumbnail_url": row.thumbnail_url or "",
             "thumbnail_gcs_uri": row.thumbnail_gcs_uri or "",
+            "thumbnail_saved_url": gcs_public_url(row.thumbnail_gcs_uri or ""),
             "thumbnail_max_url": f"https://i.ytimg.com/vi/{vid}/maxresdefault.jpg",
             "thumbnail_fallback_urls": [
+                gcs_public_url(row.thumbnail_gcs_uri or ""),
                 f"https://i.ytimg.com/vi/{vid}/sddefault.jpg",
                 f"https://i.ytimg.com/vi/{vid}/hqdefault.jpg",
                 row.thumbnail_url or "",
@@ -201,6 +203,16 @@ def parse_tags(value: object) -> list[str]:
     except Exception:
         pass
     return [x.strip() for x in text.replace("、", ",").split(",") if x.strip()]
+
+
+def gcs_public_url(uri: str) -> str:
+    if not uri.startswith("gs://"):
+        return ""
+    path = uri.removeprefix("gs://")
+    bucket, _, name = path.partition("/")
+    if not bucket or not name:
+        return ""
+    return f"https://storage.googleapis.com/{bucket}/{name}"
 
 
 def write_js(path: Path, name: str, data: object) -> None:
