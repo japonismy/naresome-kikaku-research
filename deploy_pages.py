@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -18,9 +19,17 @@ def run(cmd: list[str]) -> None:
 
 
 def main() -> int:
-    run(["uv", "run", "--with", "openpyxl", "python", "build_observed_archive_supplement.py"])
-    run(["uv", "run", "--with", "google-cloud-bigquery", "python", "generate_portal_data_bq.py"])
-    run(["git", "add", "data/videos.js", "reports/build_summary.json", "data_sources/observed_archive_supplement.csv"])
+    run(["uv", "run", "--python", "3.12", "--with", "openpyxl", "python", "build_observed_archive_supplement.py"])
+    refresh_cmd = ["uv", "run", "--python", "3.12", "python", "refresh_youtube_current_stats.py"]
+    if not os.environ.get("YOUTUBE_API_KEY"):
+        refresh_cmd[4:4] = ["--with", "google-cloud-secret-manager"]
+    run(refresh_cmd)
+    run(["uv", "run", "--python", "3.12", "--with", "google-cloud-bigquery", "python", "generate_portal_data_bq.py"])
+    run([
+        "git", "add", "data/videos.js", "reports/build_summary.json",
+        "reports/content_scope.csv", "data_sources/observed_archive_supplement.csv",
+        "data_sources/youtube_current_stats.csv",
+    ])
     status = subprocess.run(["git", "status", "--short"], cwd=HERE, text=True, encoding="utf-8", errors="replace", capture_output=True).stdout.strip()
     if not status:
         print("No changes to deploy.")

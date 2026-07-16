@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import json
 import re
+import unicodedata
 from collections import Counter
 from pathlib import Path
 
@@ -17,12 +18,19 @@ REPORT_DIR = Path("reports")
 SOURCE_DIR = Path("data_sources")
 OBSERVED_SUPPLEMENT_CSV = SOURCE_DIR / "observed_archive_supplement.csv"
 CHANNEL_DISPLAY_RULES_CSV = SOURCE_DIR / "channel_display_rules.csv"
+YOUTUBE_CURRENT_STATS_CSV = SOURCE_DIR / "youtube_current_stats.csv"
 DIGEST_CHARS = 1600
 HIDDEN_FLAGS = {"adult", "manga_reference", "out_of_scope"}
 ADULT_TITLE_RE = re.compile(
-    r"(?:セックス|SEX|エッチ|ヤリ(?:まく|ました|ましょう)|やりまく|中出し|"
-    r"ノー[〇◯ー]?ブラ|爆乳|巨乳|精力剤|ラブホテル|Lホテル|1発1万|"
-    r"息子を触|俺のアレ|アレを触|ゴムが落ち|生で)",
+    r"(?:セックス|セク依存|S(?:EX|[〇○◯●]X)|エッチ|エッ[〇○◯●]|エ[〇○◯●]チ|"
+    r"オ[〇○◯●]?ナニー|オ[〇○◯●]ニー|風俗|風[〇○◯●]|AV女優|A[〇○◯●]女優|"
+    r"ヤリまく|ヤって|ヤらせ|中出し|中[〇○◯●]し|中に出して|ノーパン|"
+    r"ノー[〇○◯●ー]?ブラ|全裸|全[〇○◯●]|全ネ果|爆乳|巨乳|精力剤|"
+    r"ラブホ(?:テル)?|ラ[〇○◯●]ホ|Lホテル|ソープ|デリヘル|アソコ|"
+    r"あそこ.*(?:触|舐|挟)|おっ?[〇○◯●]い|おっぱい|乳房|勃起|フル[〇○◯●]?ッキ|"
+    r"パ[ン〇○◯●]ツ.*(?:中|手|匂|舐|濡)|下着.*(?:透|見|脱)|お股を広げ|"
+    r"息子.*(?:暴走|触|サワ|大きく|入れ)|俺のアレ|アレを(?:食|触|舐)|"
+    r"大人のおもちゃ|筆お[〇○◯●]し|初体験を捧|ゴムが落ち|1発1万)",
     re.IGNORECASE,
 )
 MANGA_TITLE_RE = re.compile(r"(?:【漫画】|【恋愛漫画】|ラブコメ漫画|ボイコミ)")
@@ -134,6 +142,7 @@ def main() -> int:
             )
 
     supplement_summary = load_observed_supplements(videos, video_by_id)
+    youtube_stats_summary = load_youtube_current_stats(videos, video_by_id)
     classification_summary = classify_videos(videos, display_rules)
     videos.sort(key=lambda v: int_value(v.get("max_observed_view_count", v.get("view_count", 0))), reverse=True)
     write_js(DATA_DIR / "videos.js", "VIDEO_DATA", videos)
@@ -156,6 +165,9 @@ def main() -> int:
         "videos_updated_by_observed_supplement": supplement_summary["updated"],
         "observed_supplement_rows": supplement_summary["rows"],
         "observed_supplement_path": str(OBSERVED_SUPPLEMENT_CSV),
+        "youtube_current_stats_rows": youtube_stats_summary["rows"],
+        "youtube_current_stats_merged": youtube_stats_summary["merged"],
+        "youtube_current_stats_path": str(YOUTUBE_CURRENT_STATS_CSV),
         "channel_display_rules": len(display_rules),
         "default_visible_videos": classification_summary.get("default_visible", 0),
         "default_hidden_videos": classification_summary.get("default_hidden", 0),
@@ -314,7 +326,7 @@ def load_channel_display_rules() -> dict[str, dict[str, str]]:
     with CHANNEL_DISPLAY_RULES_CSV.open("r", newline="", encoding="utf-8-sig") as f:
         rows = csv.DictReader(f)
         return {
-            compact_text(row.get("channel_title", "")): {
+            normalize_channel_title(row.get("channel_title", "")): {
                 "classification": compact_text(row.get("classification", "")),
                 "reason": compact_text(row.get("reason", "")),
             }
@@ -329,7 +341,7 @@ def classify_videos(videos: list[dict[str, object]], rules: dict[str, dict[str, 
         flags = set(str(x) for x in item.get("content_flags", []) if x)
         channel = compact_text(item.get("channel", ""))
         title = compact_text(item.get("title", ""))
-        rule = rules.get(channel)
+        rule = rules.get(normalize_channel_title(channel))
         if rule:
             classification = rule["classification"]
             if classification in HIDDEN_FLAGS:
@@ -338,10 +350,15 @@ def classify_videos(videos: list[dict[str, object]], rules: dict[str, dict[str, 
             elif classification:
                 item["scope_type"] = classification
             item["classification_reason"] = rule["reason"] or "チャンネル表示ルール"
-        if ADULT_TITLE_RE.search(title):
+        normalized_title = unicodedata.normalize("NFKC", title)
+        if ADULT_TITLE_RE.search(normalized_title):
             flags.add("adult")
-        if MANGA_TITLE_RE.search(title):
+            if not rule:
+                item["classification_reason"] = "動画タイトルの成人向け表現"
+        if MANGA_TITLE_RE.search(normalized_title):
             flags.add("manga_reference")
+            if not rule:
+                item["classification_reason"] = "動画タイトルの漫画・ボイコミ表現"
         item["content_flags"] = sorted(flags)
         item["default_visible"] = not bool(flags & HIDDEN_FLAGS)
         if item["default_visible"]:
@@ -351,6 +368,11 @@ def classify_videos(videos: list[dict[str, object]], rules: dict[str, dict[str, 
         for flag in flags:
             counts[flag] += 1
     return dict(counts)
+
+
+def normalize_channel_title(value: object) -> str:
+    text = unicodedata.normalize("NFKC", compact_text(value)).casefold()
+    return re.sub(r"\s+", "", text)
 
 
 def load_observed_supplements(videos: list[dict[str, object]], video_by_id: dict[str, dict[str, object]]) -> dict[str, int]:
@@ -382,6 +404,34 @@ def load_observed_supplements(videos: list[dict[str, object]], video_by_id: dict
             videos.append(item)
             video_by_id[vid] = item
             summary["inserted"] += 1
+    return summary
+
+
+def load_youtube_current_stats(videos: list[dict[str, object]], video_by_id: dict[str, dict[str, object]]) -> dict[str, int]:
+    summary = {"rows": 0, "merged": 0}
+    if not YOUTUBE_CURRENT_STATS_CSV.exists():
+        return summary
+
+    with YOUTUBE_CURRENT_STATS_CSV.open("r", newline="", encoding="utf-8-sig") as f:
+        for row in csv.DictReader(f):
+            summary["rows"] += 1
+            video_id = compact_text(row.get("video_id", ""))
+            view_count = compact_text(row.get("view_count", ""))
+            item = video_by_id.get(video_id)
+            if not item or not view_count:
+                continue
+            observed = {
+                "observed_at": compact_text(row.get("fetched_at", "")),
+                "view_count": int_value(view_count),
+                "like_count": int_value(row.get("like_count")),
+                "comment_count": int_value(row.get("comment_count")),
+                "source_name": "youtube_current_stats",
+                "archive_type": "youtube_live_snapshot",
+            }
+            merge_observation(item, observed)
+            if not compact_text(item.get("channel_id", "")):
+                item["channel_id"] = compact_text(row.get("channel_id", ""))
+            summary["merged"] += 1
     return summary
 
 
@@ -461,7 +511,9 @@ def merge_observation(item: dict[str, object], observed: dict[str, object]) -> N
         int_value(item.get("max_observed_view_count")),
         int_value(observed.get("view_count")),
     )
-    if int_value(observed.get("view_count")) >= int_value(item.get("observed_view_count")):
+    observed_at = compact_text(observed.get("observed_at", ""))
+    current_at = compact_text(item.get("observed_at", ""))
+    if observed_at and (not current_at or observed_at >= current_at):
         item["observed_view_count"] = observed["view_count"]
         item["observed_like_count"] = observed["like_count"]
         item["observed_comment_count"] = observed["comment_count"]
@@ -470,7 +522,7 @@ def merge_observation(item: dict[str, object], observed: dict[str, object]) -> N
         item["like_count"] = observed["like_count"]
         item["comment_count"] = observed["comment_count"]
         item["fetched_at"] = observed["observed_at"]
-    if str(observed.get("observed_at", "")) >= str(item.get("latest_observed_at", "")):
+    if observed_at >= compact_text(item.get("latest_observed_at", "")):
         item["latest_observed_at"] = observed["observed_at"]
 
 
@@ -552,7 +604,7 @@ def write_content_scope_csv(path: Path, videos: list[dict[str, object]]) -> None
         "channel", "video_count", "sources",
     ]
     with path.open("w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.DictWriter(f, fieldnames=fields)
+        writer = csv.DictWriter(f, fieldnames=fields, lineterminator="\n")
         writer.writeheader()
         for row in sorted(
             grouped.values(),

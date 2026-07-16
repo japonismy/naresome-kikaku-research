@@ -19,7 +19,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install google-cloud-bigquery
+        run: pip install google-cloud-bigquery google-cloud-secret-manager openpyxl
 
       - name: Configure Google credentials
         env:
@@ -29,6 +29,12 @@ jobs:
           printf '%s' "$GCP_SA_KEY" > "$RUNNER_TEMP/gcp-sa.json"
           echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/gcp-sa.json" >> "$GITHUB_ENV"
 
+      - name: Rebuild archived observations
+        run: python build_observed_archive_supplement.py
+
+      - name: Refresh former competitor statistics
+        run: python refresh_youtube_current_stats.py
+
       - name: Generate data from BigQuery
         run: python generate_portal_data_bq.py
 
@@ -36,7 +42,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data reports
+          git add data reports data_sources/observed_archive_supplement.csv data_sources/youtube_current_stats.csv
           if git diff --cached --quiet; then
             echo "No data changes."
           else

@@ -29,8 +29,12 @@ https://japonismy.github.io/naresome-kikaku-research/
 BigQueryからページ用データを生成します。
 
 ```powershell
-uv run --with google-cloud-bigquery python generate_portal_data_bq.py
+uv run --python 3.12 --with openpyxl python build_observed_archive_supplement.py
+python refresh_youtube_current_stats.py
+uv run --python 3.12 --with google-cloud-bigquery python generate_portal_data_bq.py
 ```
+
+`refresh_youtube_current_stats.py` は、BigQueryにない過去競合動画についても現在のYouTube統計を取得します。ローカルでは `YOUTUBE_API_KEY`、GitHub ActionsではGCP Secret Managerの `naresome-youtube-api-key` を使用します。取得不能な削除・非公開動画は、最後に取得できた値または過去の調査値を表示します。
 
 ## サムネOCR
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import re
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Iterable
 
@@ -162,8 +163,10 @@ def dedupe_rows(rows: Iterable[dict[str, str]]) -> list[dict[str, str]]:
     for row in rows:
         normalized = normalize_output_row(row)
         key = (normalized["video_id"], normalized["observed_at"], normalized["source_name"])
-        if key not in by_key:
-            by_key[key] = normalized
+        # The workbook exports are read after the previously generated CSV.
+        # Prefer the latest source row so a corrected import can replace stale
+        # values that were written by an older version of this script.
+        by_key[key] = normalized
     return list(by_key.values())
 
 
@@ -213,7 +216,19 @@ def normalize_date(value: str) -> str:
 
 
 def digits(value: str) -> str:
-    return re.sub(r"[^\d]", "", compact(value))
+    text = compact(value).replace(",", "").replace("，", "")
+    if not text:
+        return ""
+    match = re.search(r"-?\d+(?:\.\d+)?", text)
+    if not match:
+        return ""
+    try:
+        number = Decimal(match.group(0))
+    except InvalidOperation:
+        return ""
+    if number < 0:
+        return ""
+    return str(int(number))
 
 
 def compact(value: object) -> str:
