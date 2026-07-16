@@ -18,6 +18,7 @@ REPORT_DIR = Path("reports")
 SOURCE_DIR = Path("data_sources")
 OBSERVED_SUPPLEMENT_CSV = SOURCE_DIR / "observed_archive_supplement.csv"
 CHANNEL_DISPLAY_RULES_CSV = SOURCE_DIR / "channel_display_rules.csv"
+FORMER_COMPETITOR_CHANNELS_CSV = SOURCE_DIR / "former_competitor_channels.csv"
 YOUTUBE_CURRENT_STATS_CSV = SOURCE_DIR / "youtube_current_stats.csv"
 DIGEST_CHARS = 1600
 HIDDEN_FLAGS = {"adult", "manga_reference", "out_of_scope"}
@@ -28,9 +29,18 @@ ADULT_TITLE_RE = re.compile(
     r"ノー[〇○◯●ー]?ブラ|全裸|全[〇○◯●]|全ネ果|爆乳|巨乳|精力剤|"
     r"ラブホ(?:テル)?|ラ[〇○◯●]ホ|Lホテル|ソープ|デリヘル|アソコ|"
     r"あそこ.*(?:触|舐|挟)|おっ?[〇○◯●]い|おっぱい|乳房|勃起|フル[〇○◯●]?ッキ|"
-    r"パ[ン〇○◯●]ツ.*(?:中|手|匂|舐|濡)|下着.*(?:透|見|脱)|お股を広げ|"
-    r"息子.*(?:暴走|触|サワ|大きく|入れ)|俺のアレ|アレを(?:食|触|舐)|"
-    r"大人のおもちゃ|筆お[〇○◯●]し|初体験を捧|ゴムが落ち|1発1万)",
+    r"パンツ|パン[〇○◯●]|パ[〇○◯●]ツ|下着|スカート.*(?:中|めく|捲|覗)|"
+    r"裸|着替え.*(?:遭遇|見|覗)|押し倒|舐め|ペロペロ|揉ん|お股を広げ|"
+    r"息子.*(?:暴走|触|サワ|大き|入れ|丸出し|巨大|立派|見せ|匂)|俺のアレ|アレを(?:食|触|舐)|"
+    r"玉や竿|マグナム|暴れ龍|デリケートゾーン|メンエス|エ[ロ●]垢|Gカップ|股間|"
+    r"子作りを迫|寝てあげる|アワビ|キノコを添|泡のお店|1人処理|初夜|"
+    r"媚[薬〇○◯●]|欲[求〇○◯●]不満|美尻|豊満ボディ|びしょびしょ熟女|デカメロン|"
+    r"使用済.*ティッシュ|下の処理|めちゃ(?:くちゃ|めちゃ).*[〇○◯●]ッ|"
+    r"初体験|初めてを約束|私を大人にして|ヤリ目|ヤラせ|セクシー.*アノ声|"
+    r"オカズに|(?:夜|隣).*アノ声|一人で始め|ア[〇○◯●]コ|[〇○◯●]欲|[〇○◯●]乳|"
+    r"アブナイところ.*触|お尻.*触|胸.*(?:触|手を入|押し付|先端|谷間.*見|手を突っ込)|"
+    r"大きな胸で迫|脱がして.*ボイン|生理現象でたって|"
+    r"大人のおもちゃ|筆お[〇○◯●]し|ゴムが落ち|1発1万)",
     re.IGNORECASE,
 )
 MANGA_TITLE_RE = re.compile(r"(?:【漫画】|【恋愛漫画】|ラブコメ漫画|ボイコミ)")
@@ -42,6 +52,7 @@ def main() -> int:
     SOURCE_DIR.mkdir(exist_ok=True)
     client = bigquery.Client(project=PROJECT_ID)
     display_rules = load_channel_display_rules()
+    former_competitor_channels = load_former_competitor_channels()
 
     videos = []
     video_by_id = {}
@@ -141,18 +152,27 @@ def main() -> int:
                 }
             )
 
-    supplement_summary = load_observed_supplements(videos, video_by_id)
+    supplement_summary = load_observed_supplements(videos, video_by_id, former_competitor_channels)
     youtube_stats_summary = load_youtube_current_stats(videos, video_by_id)
     classification_summary = classify_videos(videos, display_rules)
+    source_videos = len(videos)
+    excluded_videos = [video for video in videos if set(video.get("content_flags", [])) & HIDDEN_FLAGS]
+    videos = [video for video in videos if not (set(video.get("content_flags", [])) & HIDDEN_FLAGS)]
+    public_video_ids = {str(video["video_id"]) for video in videos}
+    descriptions = [row for row in descriptions if str(row["video_id"]) in public_video_ids]
+    missing = [row for row in missing if str(row["video_id"]) in public_video_ids]
     videos.sort(key=lambda v: int_value(v.get("max_observed_view_count", v.get("view_count", 0))), reverse=True)
     write_js(DATA_DIR / "videos.js", "VIDEO_DATA", videos)
     write_js(DATA_DIR / "transcripts_light.js", "TRANSCRIPT_DATA", descriptions)
     write_missing_csv(REPORT_DIR / "thumbnail_text_missing.csv", missing)
     write_content_scope_csv(REPORT_DIR / "content_scope.csv", videos)
+    write_content_scope_csv(REPORT_DIR / "excluded_content_scope.csv", excluded_videos)
     channels = list(client.query(channel_scope_query()).result())
     write_channel_scope_csv(REPORT_DIR / "channel_scope.csv", channels)
     summary = {
         "videos": len(videos),
+        "source_videos_before_scope_filter": source_videos,
+        "scope_excluded_videos": len(excluded_videos),
         "videos_with_thumbnail_text": sum(1 for v in videos if v["thumbnail_text"]),
         "videos_missing_thumbnail_text": len(missing),
         "description_digests": len(descriptions),
@@ -163,14 +183,17 @@ def main() -> int:
         "videos_with_thumbnail_gcs_uri": sum(1 for v in videos if v["thumbnail_gcs_uri"]),
         "videos_from_observed_supplement": supplement_summary["inserted"],
         "videos_updated_by_observed_supplement": supplement_summary["updated"],
+        "supplement_rows_skipped_not_allowlisted": supplement_summary["skipped_not_allowlisted"],
         "observed_supplement_rows": supplement_summary["rows"],
         "observed_supplement_path": str(OBSERVED_SUPPLEMENT_CSV),
+        "former_competitor_channels": len(former_competitor_channels),
+        "former_competitor_channels_path": str(FORMER_COMPETITOR_CHANNELS_CSV),
         "youtube_current_stats_rows": youtube_stats_summary["rows"],
         "youtube_current_stats_merged": youtube_stats_summary["merged"],
         "youtube_current_stats_path": str(YOUTUBE_CURRENT_STATS_CSV),
         "channel_display_rules": len(display_rules),
-        "default_visible_videos": classification_summary.get("default_visible", 0),
-        "default_hidden_videos": classification_summary.get("default_hidden", 0),
+        "default_visible_videos": len(videos),
+        "default_hidden_videos": 0,
         "adult_flagged_videos": classification_summary.get("adult", 0),
         "manga_reference_flagged_videos": classification_summary.get("manga_reference", 0),
         "out_of_scope_flagged_videos": classification_summary.get("out_of_scope", 0),
@@ -277,7 +300,7 @@ def video_query() -> str:
       USING(video_id)
     WHERE v.thumbnail_url_max IS NOT NULL
       AND v.thumbnail_url_max != ''
-      AND COALESCE(c.relation_type, 'competitor') IN ('owned_current', 'competitor', 'migration_or_related_competitor')
+      AND COALESCE(c.relation_type, 'competitor') IN ('competitor', 'migration_or_related_competitor')
       AND COALESCE(c.analysis_status, 'active') NOT IN ('exclude_from_naresome_competitor_analysis')
       AND (v.duration_sec IS NULL OR v.duration_sec >= 120)
     ORDER BY COALESCE(v.view_count, 0) DESC
@@ -295,7 +318,7 @@ def channel_scope_query() -> str:
       COALESCE(analysis_status, 'active') AS analysis_status,
       COALESCE(video_count, 0) AS video_count,
       (
-        COALESCE(relation_type, 'competitor') IN ('owned_current', 'competitor', 'migration_or_related_competitor')
+        COALESCE(relation_type, 'competitor') IN ('competitor', 'migration_or_related_competitor')
         AND COALESCE(analysis_status, 'active') NOT IN ('exclude_from_naresome_competitor_analysis')
       ) AS is_target
     FROM `{PROJECT_ID}.{DATASET}.channels`
@@ -332,6 +355,17 @@ def load_channel_display_rules() -> dict[str, dict[str, str]]:
             }
             for row in rows
             if compact_text(row.get("channel_title", ""))
+        }
+
+
+def load_former_competitor_channels() -> set[str]:
+    if not FORMER_COMPETITOR_CHANNELS_CSV.exists():
+        return set()
+    with FORMER_COMPETITOR_CHANNELS_CSV.open("r", newline="", encoding="utf-8-sig") as f:
+        return {
+            normalize_channel_title(row.get("channel_title", ""))
+            for row in csv.DictReader(f)
+            if normalize_channel_title(row.get("channel_title", ""))
         }
 
 
@@ -375,8 +409,12 @@ def normalize_channel_title(value: object) -> str:
     return re.sub(r"\s+", "", text)
 
 
-def load_observed_supplements(videos: list[dict[str, object]], video_by_id: dict[str, dict[str, object]]) -> dict[str, int]:
-    summary = {"rows": 0, "inserted": 0, "updated": 0}
+def load_observed_supplements(
+    videos: list[dict[str, object]],
+    video_by_id: dict[str, dict[str, object]],
+    former_competitor_channels: set[str],
+) -> dict[str, int]:
+    summary = {"rows": 0, "inserted": 0, "updated": 0, "skipped_not_allowlisted": 0}
     if not OBSERVED_SUPPLEMENT_CSV.exists():
         return summary
 
@@ -398,6 +436,11 @@ def load_observed_supplements(videos: list[dict[str, object]], video_by_id: dict
             if vid in video_by_id:
                 merge_observation(video_by_id[vid], observed)
                 summary["updated"] += 1
+                continue
+
+            channel_title = normalize_channel_title(row.get("channel_title", ""))
+            if channel_title not in former_competitor_channels:
+                summary["skipped_not_allowlisted"] += 1
                 continue
 
             item = make_supplement_video(vid, row, observed)
@@ -565,7 +608,7 @@ def write_channel_scope_csv(path: Path, rows: list[object]) -> None:
             "is_target", "channel_id", "title", "relation_type", "content_category",
             "watch_scope", "analysis_status", "video_count",
         ]
-        writer = csv.DictWriter(f, fieldnames=fields)
+        writer = csv.DictWriter(f, fieldnames=fields, lineterminator="\n")
         writer.writeheader()
         for row in rows:
             writer.writerow({field: getattr(row, field) for field in fields})

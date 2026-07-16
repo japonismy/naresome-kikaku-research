@@ -27,7 +27,8 @@ def main() -> int:
     run(["uv", "run", "--python", "3.12", "--with", "google-cloud-bigquery", "python", "generate_portal_data_bq.py"])
     run([
         "git", "add", "data/videos.js", "reports/build_summary.json",
-        "reports/content_scope.csv", "data_sources/observed_archive_supplement.csv",
+        "reports/content_scope.csv", "reports/excluded_content_scope.csv",
+        "data_sources/observed_archive_supplement.csv",
         "data_sources/youtube_current_stats.csv",
     ])
     status = subprocess.run(["git", "status", "--short"], cwd=HERE, text=True, encoding="utf-8", errors="replace", capture_output=True).stdout.strip()

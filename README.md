@@ -73,11 +73,7 @@ uv run --with google-genai --with google-cloud-bigquery python ocr_missing_thumb
 - `adjacent_out_of_scope`
 - `owned_legacy`
 
-過去シート由来の成人向け、漫画・元ネタ、その他参考元は `data_sources/channel_display_rules.csv` と保守的なタイトル判定でフラグを付け、ページではデフォルト非表示にします。必要な場合だけ次のチェックを有効にして表示できます。
-
-- `成人向けも表示`
-- `漫画・元ネタも表示`
-- `その他参考元も表示`
+公開ページには、BigQueryの監視台帳で `competitor` または `migration_or_related_competitor` になっているチャンネルと、`data_sources/former_competitor_channels.csv` で確認済みの過去競合チャンネルだけを出力します。自社チャンネル、成人向け、漫画・元ネタ、その他参考元は公開データに含めません。
 
 現在のBQ対象・対象外一覧は `reports/channel_scope.csv`、ページ上のチャンネル／フラグ別件数は `reports/content_scope.csv` に出力します。
 

@@ -209,9 +209,6 @@
       <label><input type="checkbox" id="fieldTags" checked> タグ</label>
       <label><input type="checkbox" id="matchAll" checked> すべての語を含む</label>
       <label><input type="checkbox" id="missingThumbnailTextOnly"> サムネ文字未整備のみ</label>
-      <label><input type="checkbox" id="showAdult"> 成人向けも表示</label>
-      <label><input type="checkbox" id="showMangaReference"> 漫画・元ネタも表示</label>
-      <label><input type="checkbox" id="showOutOfScope"> その他参考元も表示</label>
       <button id="searchBtn" type="button">検索</button>
     </div>
     <div class="status" id="status"></div>
@@ -269,12 +266,6 @@
       updateChannelOptions();
       document.getElementById("searchBtn").addEventListener("click", render);
       document.getElementById("q").addEventListener("keydown", e => { if (e.key === "Enter") render(); });
-      ["showAdult", "showMangaReference", "showOutOfScope"].forEach(id => {
-        document.getElementById(id).addEventListener("change", () => {
-          updateChannelOptions();
-          render();
-        });
-      });
       const dialog = document.getElementById("dialog");
       document.getElementById("closeBtn").addEventListener("click", () => dialog.close());
       dialog.addEventListener("click", e => {
@@ -299,13 +290,10 @@
       const dateFrom = document.getElementById("dateFrom").value;
       const sort = document.getElementById("sort").value;
       const missingThumbnailTextOnly = document.getElementById("missingThumbnailTextOnly").checked;
-      const hiddenByContentFlags = videos.filter(v => !isContentVisible(v)).length;
-
       let rows = videos.map(v => {
         const hit = hitInfo(v, terms, fields, matchAll);
         return { v, hit };
       }).filter(({ v, hit }) => {
-        if (!isContentVisible(v)) return false;
         if (channel && v.channel !== channel) return false;
         if (observedViews(v) < minViews) return false;
         if (dateFrom && (!v.published_at || v.published_at.slice(0, 10) < dateFrom)) return false;
@@ -324,7 +312,7 @@
       if (sort === "relevance") rows.sort((a, b) => b.hit.score - a.hit.score || observedViews(b.v) - observedViews(a.v));
 
       const limited = rows.slice(0, 500);
-      status.textContent = `表示 ${fmt.format(limited.length)}件 / ヒット ${fmt.format(rows.length)}件 / 全 ${fmt.format(videos.length)}件 / フラグ非表示 ${fmt.format(hiddenByContentFlags)}件`;
+      status.textContent = `表示 ${fmt.format(limited.length)}件 / ヒット ${fmt.format(rows.length)}件 / 競合動画 ${fmt.format(videos.length)}件`;
       grid.innerHTML = limited.map(({ v, hit }) => cardHtml(v, hit)).join("");
       grid.querySelectorAll(".card").forEach(el => {
         el.addEventListener("click", () => openDetail(videos[Number(el.dataset.idx)]));
@@ -334,18 +322,10 @@
     function updateChannelOptions() {
       const selected = channelSelect.value;
       const counts = new Map();
-      videos.filter(isContentVisible).forEach(v => counts.set(v.channel, (counts.get(v.channel) || 0) + 1));
+      videos.forEach(v => counts.set(v.channel, (counts.get(v.channel) || 0) + 1));
       const channels = [...counts.keys()].filter(Boolean).sort((a, b) => a.localeCompare(b, "ja"));
       channelSelect.innerHTML = '<option value="">すべて</option>' + channels.map(c => `<option value="${escapeAttr(c)}">${escapeHtml(c)} (${counts.get(c)})</option>`).join("");
       if (counts.has(selected)) channelSelect.value = selected;
-    }
-
-    function isContentVisible(v) {
-      const flags = new Set(v.content_flags || []);
-      if (flags.has("adult") && !document.getElementById("showAdult").checked) return false;
-      if (flags.has("manga_reference") && !document.getElementById("showMangaReference").checked) return false;
-      if (flags.has("out_of_scope") && !document.getElementById("showOutOfScope").checked) return false;
-      return true;
     }
 
     function selectedFields() {
