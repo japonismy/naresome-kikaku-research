@@ -56,14 +56,10 @@ uv run --with google-genai --with google-cloud-bigquery python ocr_missing_thumb
 
 ## 対象チャンネル
 
-デフォルトの検索対象は、チャンネル条件と動画タイトル条件の両方を満たす動画です。
-
-動画タイトル条件:
-
-- タイトルに `馴れ初め`、`馴初め`、`なれそめ` のいずれかを含む
+デフォルトの検索対象は、監視台帳上の現行チャンネル、停止済みチャンネルの保全動画、過去の競合調査シートに記録された旧競合チャンネルです。チャンネル名や動画タイトルに `馴れ初め` を含むかどうかだけでは判定しません。
 
 - `owned_current`
-- `competitor` かつ公開動画あり
+- `competitor`（現行・停止済みの保全動画を含む）
 - `migration_or_related_competitor`
 
 対象外:
@@ -73,7 +69,13 @@ uv run --with google-genai --with google-cloud-bigquery python ocr_missing_thumb
 - `adjacent_out_of_scope`
 - `owned_legacy`
 
-現在の対象・対象外一覧は `reports/channel_scope.csv` に出力します。
+過去シート由来の成人向け、漫画・元ネタ、その他参考元は `data_sources/channel_display_rules.csv` と保守的なタイトル判定でフラグを付け、ページではデフォルト非表示にします。必要な場合だけ次のチェックを有効にして表示できます。
+
+- `成人向けも表示`
+- `漫画・元ネタも表示`
+- `その他参考元も表示`
+
+現在のBQ対象・対象外一覧は `reports/channel_scope.csv`、ページ上のチャンネル／フラグ別件数は `reports/content_scope.csv` に出力します。
 
 ## 台本/字幕CSV
 

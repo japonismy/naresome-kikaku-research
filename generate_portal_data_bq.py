@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import csv
 import json
+import re
+from collections import Counter
 from pathlib import Path
 
 from google.cloud import bigquery
@@ -14,7 +16,16 @@ DATA_DIR = Path("data")
 REPORT_DIR = Path("reports")
 SOURCE_DIR = Path("data_sources")
 OBSERVED_SUPPLEMENT_CSV = SOURCE_DIR / "observed_archive_supplement.csv"
+CHANNEL_DISPLAY_RULES_CSV = SOURCE_DIR / "channel_display_rules.csv"
 DIGEST_CHARS = 1600
+HIDDEN_FLAGS = {"adult", "manga_reference", "out_of_scope"}
+ADULT_TITLE_RE = re.compile(
+    r"(?:セックス|SEX|エッチ|ヤリ(?:まく|ました|ましょう)|やりまく|中出し|"
+    r"ノー[〇◯ー]?ブラ|爆乳|巨乳|精力剤|ラブホテル|Lホテル|1発1万|"
+    r"息子を触|俺のアレ|アレを触|ゴムが落ち|生で)",
+    re.IGNORECASE,
+)
+MANGA_TITLE_RE = re.compile(r"(?:【漫画】|【恋愛漫画】|ラブコメ漫画|ボイコミ)")
 
 
 def main() -> int:
@@ -22,6 +33,7 @@ def main() -> int:
     REPORT_DIR.mkdir(exist_ok=True)
     SOURCE_DIR.mkdir(exist_ok=True)
     client = bigquery.Client(project=PROJECT_ID)
+    display_rules = load_channel_display_rules()
 
     videos = []
     video_by_id = {}
@@ -65,6 +77,14 @@ def main() -> int:
             "script_gcs_uri": row.gcs_csv_uri or "",
             "script_csv_url": row.public_csv_url or "",
             "tags": parse_tags(row.tags),
+            "relation_type": row.relation_type or "competitor",
+            "analysis_status": row.analysis_status or "active",
+            "content_category": row.content_category or "",
+            "watch_scope": row.watch_scope or "full",
+            "scope_type": "monitored_channel_archive" if row.source_type == "archive" else "monitored_channel",
+            "content_flags": [],
+            "default_visible": True,
+            "classification_reason": "BigQuery監視チャンネル台帳",
             "source_type": row.source_type or "current",
             "is_archive": row.source_type == "archive",
             "archive_type": "stopped_channel_archive" if row.source_type == "archive" else "current_monitoring",
@@ -114,10 +134,12 @@ def main() -> int:
             )
 
     supplement_summary = load_observed_supplements(videos, video_by_id)
+    classification_summary = classify_videos(videos, display_rules)
     videos.sort(key=lambda v: int_value(v.get("max_observed_view_count", v.get("view_count", 0))), reverse=True)
     write_js(DATA_DIR / "videos.js", "VIDEO_DATA", videos)
     write_js(DATA_DIR / "transcripts_light.js", "TRANSCRIPT_DATA", descriptions)
     write_missing_csv(REPORT_DIR / "thumbnail_text_missing.csv", missing)
+    write_content_scope_csv(REPORT_DIR / "content_scope.csv", videos)
     channels = list(client.query(channel_scope_query()).result())
     write_channel_scope_csv(REPORT_DIR / "channel_scope.csv", channels)
     summary = {
@@ -134,6 +156,12 @@ def main() -> int:
         "videos_updated_by_observed_supplement": supplement_summary["updated"],
         "observed_supplement_rows": supplement_summary["rows"],
         "observed_supplement_path": str(OBSERVED_SUPPLEMENT_CSV),
+        "channel_display_rules": len(display_rules),
+        "default_visible_videos": classification_summary.get("default_visible", 0),
+        "default_hidden_videos": classification_summary.get("default_hidden", 0),
+        "adult_flagged_videos": classification_summary.get("adult", 0),
+        "manga_reference_flagged_videos": classification_summary.get("manga_reference", 0),
+        "out_of_scope_flagged_videos": classification_summary.get("out_of_scope", 0),
         "target_channels": sum(1 for c in channels if c.is_target),
         "excluded_channels": sum(1 for c in channels if not c.is_target),
         "source": "bigquery",
@@ -177,6 +205,10 @@ def video_query() -> str:
       v.tags,
       v.fetched_at,
       v.source_type,
+      COALESCE(c.relation_type, 'competitor') AS relation_type,
+      COALESCE(c.analysis_status, 'active') AS analysis_status,
+      COALESCE(c.content_category, '') AS content_category,
+      COALESCE(c.watch_scope, 'full') AS watch_scope,
       o.thumbnail_text,
       IF(sa.video_id IS NOT NULL AND sa.asset_count > 0, TRUE, FALSE) AS script_asset_available,
       sa.gcs_csv_uri,
@@ -235,18 +267,6 @@ def video_query() -> str:
       AND v.thumbnail_url_max != ''
       AND COALESCE(c.relation_type, 'competitor') IN ('owned_current', 'competitor', 'migration_or_related_competitor')
       AND COALESCE(c.analysis_status, 'active') NOT IN ('exclude_from_naresome_competitor_analysis')
-      AND (
-        v.source_type = 'archive'
-        OR COALESCE(c.analysis_status, 'active') NOT IN ('inactive_or_no_public_videos')
-      )
-      AND (
-        c.channel_id IN ('UCMKCAHo4JFbXD2J77nWSswQ')
-        OR REGEXP_CONTAINS(NORMALIZE(COALESCE(c.title, ''), NFKC), r'(馴れ初め|馴初め|なれそめ)')
-      )
-      AND (
-        c.channel_id IN ('UCMKCAHo4JFbXD2J77nWSswQ')
-        OR REGEXP_CONTAINS(NORMALIZE(COALESCE(v.title, ''), NFKC), r'(馴れ初め|馴初め|なれそめ)')
-      )
       AND (v.duration_sec IS NULL OR v.duration_sec >= 120)
     ORDER BY COALESCE(v.view_count, 0) DESC
     """
@@ -258,15 +278,13 @@ def channel_scope_query() -> str:
       channel_id,
       title,
       COALESCE(relation_type, 'competitor') AS relation_type,
+      COALESCE(content_category, '') AS content_category,
+      COALESCE(watch_scope, 'full') AS watch_scope,
       COALESCE(analysis_status, 'active') AS analysis_status,
       COALESCE(video_count, 0) AS video_count,
       (
         COALESCE(relation_type, 'competitor') IN ('owned_current', 'competitor', 'migration_or_related_competitor')
-        AND COALESCE(analysis_status, 'active') NOT IN ('exclude_from_naresome_competitor_analysis', 'inactive_or_no_public_videos')
-        AND (
-          channel_id IN ('UCMKCAHo4JFbXD2J77nWSswQ')
-          OR REGEXP_CONTAINS(NORMALIZE(COALESCE(title, ''), NFKC), r'(馴れ初め|馴初め|なれそめ)')
-        )
+        AND COALESCE(analysis_status, 'active') NOT IN ('exclude_from_naresome_competitor_analysis')
       ) AS is_target
     FROM `{PROJECT_ID}.{DATASET}.channels`
     ORDER BY is_target DESC, relation_type, analysis_status, video_count DESC, title
@@ -288,6 +306,51 @@ def parse_tags(value: object) -> list[str]:
     except Exception:
         pass
     return [x.strip() for x in text.replace("、", ",").split(",") if x.strip()]
+
+
+def load_channel_display_rules() -> dict[str, dict[str, str]]:
+    if not CHANNEL_DISPLAY_RULES_CSV.exists():
+        return {}
+    with CHANNEL_DISPLAY_RULES_CSV.open("r", newline="", encoding="utf-8-sig") as f:
+        rows = csv.DictReader(f)
+        return {
+            compact_text(row.get("channel_title", "")): {
+                "classification": compact_text(row.get("classification", "")),
+                "reason": compact_text(row.get("reason", "")),
+            }
+            for row in rows
+            if compact_text(row.get("channel_title", ""))
+        }
+
+
+def classify_videos(videos: list[dict[str, object]], rules: dict[str, dict[str, str]]) -> dict[str, int]:
+    counts: Counter[str] = Counter()
+    for item in videos:
+        flags = set(str(x) for x in item.get("content_flags", []) if x)
+        channel = compact_text(item.get("channel", ""))
+        title = compact_text(item.get("title", ""))
+        rule = rules.get(channel)
+        if rule:
+            classification = rule["classification"]
+            if classification in HIDDEN_FLAGS:
+                flags.add(classification)
+                item["scope_type"] = classification
+            elif classification:
+                item["scope_type"] = classification
+            item["classification_reason"] = rule["reason"] or "チャンネル表示ルール"
+        if ADULT_TITLE_RE.search(title):
+            flags.add("adult")
+        if MANGA_TITLE_RE.search(title):
+            flags.add("manga_reference")
+        item["content_flags"] = sorted(flags)
+        item["default_visible"] = not bool(flags & HIDDEN_FLAGS)
+        if item["default_visible"]:
+            counts["default_visible"] += 1
+        else:
+            counts["default_hidden"] += 1
+        for flag in flags:
+            counts[flag] += 1
+    return dict(counts)
 
 
 def load_observed_supplements(videos: list[dict[str, object]], video_by_id: dict[str, dict[str, object]]) -> dict[str, int]:
@@ -362,6 +425,14 @@ def make_supplement_video(video_id: str, row: dict[str, str], observed: dict[str
         "script_gcs_uri": "",
         "script_csv_url": "",
         "tags": ["observed_archive", archive_type],
+        "relation_type": "former_competitor",
+        "analysis_status": "historical_observation",
+        "content_category": "",
+        "watch_scope": "archive_only",
+        "scope_type": "former_competitor",
+        "content_flags": [],
+        "default_visible": True,
+        "classification_reason": "過去の競合調査シート",
         "source_type": "observed_archive",
         "is_archive": True,
         "archive_type": archive_type,
@@ -438,11 +509,58 @@ def write_missing_csv(path: Path, rows: list[dict[str, object]]) -> None:
 
 def write_channel_scope_csv(path: Path, rows: list[object]) -> None:
     with path.open("w", newline="", encoding="utf-8-sig") as f:
-        fields = ["is_target", "channel_id", "title", "relation_type", "analysis_status", "video_count"]
+        fields = [
+            "is_target", "channel_id", "title", "relation_type", "content_category",
+            "watch_scope", "analysis_status", "video_count",
+        ]
         writer = csv.DictWriter(f, fieldnames=fields)
         writer.writeheader()
         for row in rows:
             writer.writerow({field: getattr(row, field) for field in fields})
+
+
+def write_content_scope_csv(path: Path, videos: list[dict[str, object]]) -> None:
+    grouped: dict[tuple[object, ...], dict[str, object]] = {}
+    for video in videos:
+        flags = ",".join(str(x) for x in video.get("content_flags", []))
+        key = (
+            bool(video.get("default_visible", True)),
+            str(video.get("scope_type", "")),
+            flags,
+            str(video.get("channel_id", "")),
+            str(video.get("channel", "")),
+        )
+        row = grouped.setdefault(
+            key,
+            {
+                "default_visible": key[0],
+                "scope_type": key[1],
+                "content_flags": key[2],
+                "channel_id": key[3],
+                "channel": key[4],
+                "video_count": 0,
+                "sources": set(),
+            },
+        )
+        row["video_count"] = int_value(row["video_count"]) + 1
+        sources = row["sources"]
+        if isinstance(sources, set):
+            sources.add(str(video.get("source_type", "")))
+
+    fields = [
+        "default_visible", "scope_type", "content_flags", "channel_id",
+        "channel", "video_count", "sources",
+    ]
+    with path.open("w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(f, fieldnames=fields)
+        writer.writeheader()
+        for row in sorted(
+            grouped.values(),
+            key=lambda x: (not bool(x["default_visible"]), str(x["scope_type"]), -int_value(x["video_count"]), str(x["channel"])),
+        ):
+            output = dict(row)
+            output["sources"] = ",".join(sorted(output["sources"])) if isinstance(output["sources"], set) else ""
+            writer.writerow(output)
 
 
 if __name__ == "__main__":
