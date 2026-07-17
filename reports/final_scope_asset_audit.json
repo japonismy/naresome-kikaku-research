@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "source_registry_channels": 33,
+  "public_registry_channels": 32,
+  "excluded_registry_channels": [
+    "俺たちの馴れ初め"
+  ],
+  "searchable_videos": 10435,
+  "searchable_channel_ids": 30,
+  "lifecycle_counts": {
+    "競合・更新あり": 17,
+    "過去競合・現在公開なし": 5,
+    "過去競合・更新停止": 10
+  },
+  "data_status_counts": {
+    "DBデータあり": 30,
+    "データなし": 2
+  },
+  "thumbnail_gcs_assets": 5528,
+  "script_gcs_assets": 1786,
+  "copy_archive_thumbnail_links": 310,
+  "thumbnail_override_links": 28,
+  "archive_script_links": 0,
+  "thumbnail_asset_id_errors": 0,
+  "script_asset_id_errors": 0,
+  "out_of_scope_videos": 0,
+  "duplicate_video_ids": 0,
+  "orphan_transcripts": 0
+}

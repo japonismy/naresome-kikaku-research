@@ -12,11 +12,15 @@ PROJECT_ID = "rugged-destiny-408613"
 DATASET = "naresome_all"
 HERE = Path(__file__).resolve().parent
 REPORT_DIR = HERE / "reports"
+SOURCE_DIR = HERE / "data_sources"
 
 
 def main() -> int:
     client = bigquery.Client(project=PROJECT_ID)
-    thumb_rows = load_csv(REPORT_DIR / "gcs_thumbnail_assets_manifest.csv")
+    thumb_rows = merge_asset_rows(
+        load_csv(REPORT_DIR / "gcs_thumbnail_assets_manifest.csv"),
+        load_csv(SOURCE_DIR / "thumbnail_asset_overrides.csv"),
+    )
     script_rows = load_csv(REPORT_DIR / "gcs_script_csv_manifest.csv")
     load_thumbnail_assets(client, thumb_rows)
     update_script_assets(client, script_rows)
@@ -29,6 +33,16 @@ def load_csv(path: Path) -> list[dict[str, str]]:
         return []
     with path.open("r", newline="", encoding="utf-8-sig") as f:
         return list(csv.DictReader(f))
+
+
+def merge_asset_rows(*groups: list[dict[str, str]]) -> list[dict[str, str]]:
+    merged: dict[str, dict[str, str]] = {}
+    for rows in groups:
+        for row in rows:
+            video_id = str(row.get("video_id", "") or "").strip()
+            if video_id:
+                merged[video_id] = row
+    return list(merged.values())
 
 
 def load_thumbnail_assets(client: bigquery.Client, rows: list[dict[str, str]]) -> None:

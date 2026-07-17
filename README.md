@@ -30,11 +30,12 @@ BigQueryからページ用データを生成します。
 
 ```powershell
 uv run --python 3.12 --with openpyxl python build_observed_archive_supplement.py
+python refresh_baseline_channel_status.py
 python refresh_youtube_current_stats.py
 uv run --python 3.12 --with google-cloud-bigquery python generate_portal_data_bq.py
 ```
 
-`refresh_youtube_current_stats.py` は、BigQueryにない過去競合動画についても現在のYouTube統計を取得します。ローカルでは `YOUTUBE_API_KEY`、GitHub ActionsではGCP Secret Managerの `naresome-youtube-api-key` を使用します。取得不能な削除・非公開動画は、最後に取得できた値または過去の調査値を表示します。
+`refresh_baseline_channel_status.py` は公開対象32チャンネルの公開可否、公開動画数、最新投稿日を確認し、「更新あり」「更新停止」「現在公開なし」を判定する入力を作ります。`refresh_youtube_current_stats.py` は、同じ32チャンネルに属する過去競合動画について現在のYouTube統計を取得します。ローカルでは `YOUTUBE_API_KEY`、GitHub ActionsではGCP Secret Managerの `naresome-youtube-api-key` を使用します。取得不能な削除・非公開動画は、最後に取得できた値または過去の調査値を表示します。
 
 ## サムネOCR
 
@@ -60,22 +61,42 @@ uv run --with google-genai --with google-cloud-bigquery python ocr_missing_thumb
 
 ## 対象チャンネル
 
-デフォルトの検索対象は、監視台帳上の現行チャンネル、停止済みチャンネルの保全動画、過去の競合調査シートに記録された旧競合チャンネルです。チャンネル名や動画タイトルに `馴れ初め` を含むかどうかだけでは判定しません。
+元のユーザー指定33チャンネルは `data_sources/baseline_competitor_channels.csv` に記録し、そのうち「俺たちの馴れ初め」は `exclude_adult` として公開・検索対象から外します。公開ページの対象は残る32チャンネルだけです。台帳外にある成人向けチャンネル、漫画・ボイコミ参考チャンネル、その他の旧競合も、BigQueryや旧調査CSVにデータが残っていても公開ページへ出力しません。
 
-- `owned_current`
-- `competitor`（現行・停止済みの保全動画を含む）
-- `migration_or_related_competitor`
+公開対象32チャンネルは、固定したcanonical channel IDを優先してBigQueryの `channels` と突合し、次のデータを統合します。
 
-対象外:
+- 現行動画: `videos`
+- 停止・削除前の保全動画: `videos_archive_20260527`
+- 過去調査の保存行: `observed_archive_supplement.csv`（公開対象32チャンネルに一致する行だけ）
+- 現在の再生数等: `youtube_current_stats.csv`
+- サムネ保全先: `thumbnail_assets`
+- 台本資産: `script_assets`
 
-- `inactive_or_no_public_videos`
-- `exclude_from_naresome_competitor_analysis`
-- `adjacent_out_of_scope`
-- `owned_legacy`
+チャンネル一覧では、現行・停止済み・データなしを削除せずに区別します。BigQueryの動画行がある場合は「DBデータあり」、旧調査の保存行だけがある場合は「保存データあり」、どちらもない場合は「データなし」です。
 
-公開ページには、BigQueryの監視台帳で `competitor` または `migration_or_related_competitor` になっているチャンネルと、`data_sources/former_competitor_channels.csv` で確認済みの過去競合チャンネルだけを出力します。自社チャンネル、成人向け、漫画・元ネタ、その他参考元は公開データに含めません。
+更新判定はYouTubeチャンネル現況を優先し、公開動画があり最終公開から45日以内なら「更新あり」、45日を超えた場合は「更新停止」、公開動画数が0なら「現在公開なし」とします。YouTube APIが一時的に失敗した場合は前回の現況CSVを保持し、最新日の欠損時だけBigQueryの最終公開日へフォールバックします。
 
-現在のBQ対象・対象外一覧は `reports/channel_scope.csv`、ページ上のチャンネル／フラグ別件数は `reports/content_scope.csv` に出力します。
+生成前の `data/videos.js` も公開対象32チャンネルに一致する行だけ読み込み、現行DB・履歴DB・過去調査保存行から消えた動画を `portal_snapshot_archive` として残します。これにより、更新中チャンネルの動画が削除・非公開になった場合も、前回公開スナップショットからサイト上の履歴を復元できます。日次ワークフローで生成データをGitへコミットするため、前回値が差分保全の入力になります。
+
+資産は動画IDで結合します。サムネは `thumbnail_assets.gcs_uri` を最優先にし、未保全時はYouTubeの `maxresdefault` / `sddefault` / `hqdefault` へ順次フォールバックします。台本は `script_assets.gcs_csv_uri` を公開URLへ変換し、詳細画面のCSVボタンから取得できるようにします。
+
+生成物:
+
+- `data/channels.js`: 公開対象32チャンネルの突合・更新・保全・資産件数
+- `reports/competitor_registry_match.csv`: 突合監査用CSV
+- `reports/final_scope_asset_audit.json`: 対象外混入、重複、資産ID結合の自動ゲート結果
+- `reports/channel_scope.csv`: BigQuery監視台帳全体の参考レポート（公開スコープの決定には使わない）
+- `reports/content_scope.csv`: 公開対象32チャンネル内動画の集計
+
+`data_sources/former_competitor_channels.csv` と `data_sources/channel_display_rules.csv` は旧調査の記録として残しますが、公開対象の選択には使いません。
+
+生成後のスコープ・資産ゲート:
+
+```powershell
+python validate_generated_scope.py
+```
+
+GCS実体があるのにBigQuery未登録だったサムネは `data_sources/thumbnail_asset_overrides.csv` で明示し、生成時と `sync_gcs_assets_to_bq.py` の両方から動画IDで再結合します。
 
 ## 台本/字幕CSV
 

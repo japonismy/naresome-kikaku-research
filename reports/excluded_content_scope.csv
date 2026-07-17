@@ -1,21 +1,17 @@
 ﻿default_visible,scope_type,content_flags,channel_id,channel,video_count,sources
-False,adult,adult,UCqQz6LVzjVFhwuptIARMOEw,俺たちの馴れ初め,174,current
-False,former_competitor,adult,UCw6YI7d9wGMZRksbjZ3ZAXQ,馴れ初めは2chから始まった,4,observed_archive
 False,former_competitor,adult,,2chほっこり馴れ初め話,1,observed_archive
-False,former_competitor,adult,UCKBNjPeEUuRuJyQ0COX5V6w,2chスレ 超有益馴れ初めものがたり,1,observed_archive
-False,former_competitor,adult,,2ch胸キュン馴れ初め,1,observed_archive
+False,former_competitor,adult,,2chほのぼのちゃんちゃん,1,observed_archive
 False,monitored_channel,adult,UCj_9E9bot7tURW10az9_Diw,ゆっくり2chのちゃんちゃん,70,current
-False,monitored_channel,adult,UC6zAgNw7aa7UuzEI75AZsoA,2chなれそめストーリー2.0,47,current
 False,monitored_channel,adult,UCNgCovRcGFrH1qe5uwJ5utg,2chほのぼのちゃんちゃん,16,current
 False,monitored_channel,adult,UCGAn8ks-dTNfJK7i9LgSBvQ,2ch馴れ初めで愛を語る,13,current
 False,monitored_channel,adult,UC2QbHksaudhIBmJfbFJHeVQ,2ch馴れ初めヒストリー,6,current
 False,monitored_channel,adult,UC4z1Nn5WWnjFZ7_mtpAq-0w,ゆっくり2ch語り,5,current
 False,monitored_channel,adult,UCMeypkYE165Tbw12XPdVnxQ,2ch馴れ初めほっこり物語,4,current
-False,monitored_channel,adult,UCZA1nGzxCc1_i-rHMvMzPPw,2ch恋愛物語,3,current
 False,monitored_channel,adult,UC9M17Nb4VrBTCynrJSTMj6Q,2ch馴れ初めラブレター,3,current
 False,monitored_channel,adult,UCIJONPMEYWDjyz07oNx55Pw,2ch馴れ初め奇跡の出会い,3,current
 False,monitored_channel,adult,UCsH9V11uQ-wkMJNleyksCtw,2chの感動馴初め話,1,current
 False,monitored_channel,adult,UCf-5TwO_qhozUjT_t7wFo7g,2ch馴れ初めキューピッド,1,current
+False,monitored_channel,adult,UCaltBBIFhAqt8_ECttdKgsw,2ch馴れ初め感動シネマ,1,current
 False,monitored_channel,adult,UC5qxS4hFAhSqPXNIZ-j4h-A,思い出のゆっくり2ch,1,current
 False,monitored_channel_archive,adult,UCCgLFnHcSl1qoK5hzrjdBGQ,2chほっこり馴れ初め話,3,archive
 False,monitored_channel_archive,adult,UCJhNSEONjBJMyl0rOnu6_FQ,2ch馴れ初めふたば,2,archive
