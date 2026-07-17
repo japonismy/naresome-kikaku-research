@@ -82,88 +82,6 @@
       color: var(--muted);
       font-size: 12px;
     }
-    .channel-directory {
-      margin-bottom: 16px;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      overflow: hidden;
-    }
-    .channel-directory summary {
-      cursor: pointer;
-      padding: 12px 14px;
-      font-weight: 700;
-      list-style-position: inside;
-    }
-    .channel-directory summary span {
-      margin-left: 10px;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 400;
-    }
-    .channel-directory-note {
-      margin: 0;
-      padding: 0 14px 12px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.6;
-    }
-    .channel-table-wrap {
-      overflow-x: auto;
-      border-top: 1px solid var(--line);
-    }
-    .channel-table {
-      width: 100%;
-      min-width: 1320px;
-      border-collapse: collapse;
-      font-size: 12px;
-    }
-    .channel-table th,
-    .channel-table td {
-      padding: 8px 10px;
-      border-bottom: 1px solid var(--line);
-      text-align: left;
-      vertical-align: top;
-      white-space: nowrap;
-    }
-    .channel-table th {
-      color: var(--muted);
-      background: #1b1b1b;
-      position: sticky;
-      top: 0;
-    }
-    .channel-table td.channel-note {
-      white-space: normal;
-      min-width: 180px;
-      line-height: 1.45;
-    }
-    .channel-name {
-      display: grid;
-      gap: 2px;
-      min-width: 180px;
-    }
-    .channel-name a { color: var(--text); text-decoration: none; font-weight: 700; }
-    .channel-name small { color: var(--muted); }
-    .data-pill {
-      display: inline-flex;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 2px 7px;
-    }
-    .data-pill.db { color: #9ae6b4; border-color: var(--accent); }
-    .data-pill.saved { color: #fbd38d; border-color: var(--warn); }
-    .data-pill.no { color: var(--muted); }
-    .channel-filter {
-      min-height: 28px;
-      padding: 4px 8px;
-      font-size: 11px;
-    }
-    .channel-filter:disabled {
-      cursor: not-allowed;
-      opacity: .45;
-      background: var(--panel2);
-      border-color: var(--line);
-    }
     main { padding: 16px 18px 32px; }
     .grid {
       display: grid;
@@ -297,36 +215,6 @@
   </header>
 
   <main>
-    <details class="channel-directory" open>
-      <summary>基準チャンネル（提供33件中、公開対象32件）<span id="channelSummary"></span></summary>
-      <p class="channel-directory-note">
-        提供された33チャンネルのうち「俺たちの馴れ初め」は成人向け分類のため除外し、残る32チャンネルだけを検索対象にしています。
-        台帳外の成人向け、漫画・ボイコミ参考、その他の旧競合も含めません。
-        更新停止済みでも保存データがあるチャンネルは残し、データがないチャンネルも過去の競合記録として表示します。
-      </p>
-      <div class="channel-table-wrap">
-        <table class="channel-table">
-          <thead>
-            <tr>
-              <th>チャンネル</th>
-              <th>分類</th>
-              <th>データ</th>
-              <th>更新状況</th>
-              <th>バックアップ</th>
-              <th>登録者</th>
-              <th>DB動画</th>
-              <th>検索動画</th>
-              <th>再生数合計</th>
-              <th>最終公開</th>
-              <th>資産紐付け</th>
-              <th>絞込</th>
-              <th>備考</th>
-            </tr>
-          </thead>
-          <tbody id="channelTable"></tbody>
-        </table>
-      </div>
-    </details>
     <div class="grid" id="grid"></div>
   </main>
 
@@ -374,7 +262,6 @@
     const grid = document.getElementById("grid");
     const status = document.getElementById("status");
     const channelSelect = document.getElementById("channel");
-    const channelTable = document.getElementById("channelTable");
     const fmt = new Intl.NumberFormat("ja-JP");
     const thumbnailPlaceholder = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720"><rect width="1280" height="720" fill="#1a1a1a"/><text x="640" y="360" fill="#888" font-size="44" text-anchor="middle" dominant-baseline="middle">No thumbnail</text></svg>'
@@ -382,7 +269,6 @@
 
     function init() {
       updateChannelOptions();
-      renderChannelDirectory();
       document.getElementById("searchBtn").addEventListener("click", render);
       document.getElementById("q").addEventListener("keydown", e => { if (e.key === "Enter") render(); });
       const dialog = document.getElementById("dialog");
@@ -397,48 +283,6 @@
         if (isBackdropClick) dialog.close();
       });
       render();
-    }
-
-    function renderChannelDirectory() {
-      const dbData = channels.filter(channel => channel.data_status === "DBデータあり").length;
-      const savedData = channels.filter(channel => channel.data_status === "保存データあり").length;
-      const noData = channels.filter(channel => channel.data_status === "データなし").length;
-      document.getElementById("channelSummary").textContent =
-        `${fmt.format(channels.length)}件 / DBデータあり ${fmt.format(dbData)} / 保存データあり ${fmt.format(savedData)} / データなし ${fmt.format(noData)}`;
-
-      channelTable.innerHTML = channels.map(channel => {
-        const hasPortalVideos = Number(channel.portal_video_count || 0) > 0;
-        const dataClass = channel.data_status === "DBデータあり"
-          ? "db"
-          : channel.data_status === "保存データあり"
-          ? "saved"
-          : "no";
-        const viewSum = Number(channel.portal_view_sum || channel.db_sum_video_views || 0);
-        const latest = String(channel.latest_public_video || channel.latest_video || channel.portal_latest_video || "").slice(0, 10) || "—";
-        return `<tr>
-          <td><span class="channel-name"><a href="${escapeAttr(channel.youtube_url)}" target="_blank" rel="noopener">${escapeHtml(channel.channel_name)}</a><small>${escapeHtml(channel.handle || "")}</small></span></td>
-          <td>${escapeHtml(channel.category_label || "")}</td>
-          <td><span class="data-pill ${dataClass}">${escapeHtml(channel.data_status || "")}</span></td>
-          <td>${escapeHtml(channel.lifecycle || "")}</td>
-          <td>${escapeHtml(channel.backup_status || "")}</td>
-          <td>${fmt.format(Number(channel.subscriber_count || 0))}</td>
-          <td>${fmt.format(Number(channel.db_video_rows || 0))}</td>
-          <td>${fmt.format(Number(channel.portal_video_count || 0))}</td>
-          <td>${viewSum ? fmt.format(viewSum) : "—"}</td>
-          <td>${escapeHtml(latest)}</td>
-          <td>${escapeHtml(channel.asset_status || "")}</td>
-          <td><button class="channel-filter" type="button" data-channel-name="${escapeAttr(channel.portal_channel_name || channel.channel_name || "")}" ${hasPortalVideos ? "" : "disabled"}>${hasPortalVideos ? `表示 ${fmt.format(Number(channel.portal_video_count || 0))}本` : "表示データなし"}</button></td>
-          <td class="channel-note">${escapeHtml(channel.note || "")}</td>
-        </tr>`;
-      }).join("");
-
-      channelTable.querySelectorAll(".channel-filter:not(:disabled)").forEach(button => {
-        button.addEventListener("click", () => {
-          channelSelect.value = button.dataset.channelName || "";
-          render();
-          document.querySelector("header").scrollIntoView({ behavior: "smooth" });
-        });
-      });
     }
 
     function render() {
@@ -484,8 +328,16 @@
       const selected = channelSelect.value;
       const counts = new Map();
       videos.forEach(v => counts.set(v.channel, (counts.get(v.channel) || 0) + 1));
-      const channels = [...counts.keys()].filter(Boolean).sort((a, b) => a.localeCompare(b, "ja"));
-      channelSelect.innerHTML = '<option value="">すべて</option>' + channels.map(c => `<option value="${escapeAttr(c)}">${escapeHtml(c)} (${counts.get(c)})</option>`).join("");
+      const dataChannels = [...counts.keys()].filter(Boolean).sort((a, b) => a.localeCompare(b, "ja"));
+      const noDataChannels = channels
+        .filter(channel => Number(channel.portal_video_count || 0) === 0)
+        .map(channel => channel.portal_channel_name || channel.channel_name)
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, "ja"));
+      channelSelect.innerHTML =
+        '<option value="">すべて</option>' +
+        dataChannels.map(name => `<option value="${escapeAttr(name)}">${escapeHtml(name)} (${counts.get(name)})</option>`).join("") +
+        noDataChannels.map(name => `<option value="${escapeAttr(name)}" disabled>${escapeHtml(name)} (データなし)</option>`).join("");
       if (counts.has(selected)) channelSelect.value = selected;
     }
 

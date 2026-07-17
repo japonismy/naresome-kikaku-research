@@ -28,17 +28,29 @@ async function main() {
       ws.send(JSON.stringify({ id, method, params }));
     });
 
+  await call("Page.reload", { ignoreCache: true });
   await new Promise((resolve) => setTimeout(resolve, 7000));
   const result = await call("Runtime.evaluate", {
     expression: `JSON.stringify({
       summary: document.querySelector("#channelSummary")?.textContent || "",
-      rows: document.querySelectorAll("#channelTable tr").length,
       cards: document.querySelectorAll(".card").length,
       status: document.querySelector("#status")?.textContent || "",
-      dbData: document.querySelectorAll(".data-pill.db").length,
-      savedData: document.querySelectorAll(".data-pill.saved").length,
-      noData: document.querySelectorAll(".data-pill.no").length,
-      disabledFilters: document.querySelectorAll(".channel-filter:disabled").length,
+      gridTop: Math.round(document.querySelector("#grid")?.getBoundingClientRect().top || 0),
+      viewportHeight: window.innerHeight,
+      channelOptions: Math.max(0, document.querySelectorAll("#channel option").length - 1),
+      disabledChannelOptions: document.querySelectorAll("#channel option:disabled").length,
+      containsExcludedChannel: [...document.querySelectorAll("#channel option")]
+        .some((item) => item.textContent.includes("俺たちの馴れ初め")),
+      images: (() => {
+        const items = [...document.querySelectorAll(".card img")];
+        return {
+          total: items.length,
+          loaded: items.filter((item) => item.complete && item.naturalWidth > 0).length,
+          placeholders: items.filter((item) => item.src.startsWith("data:image/svg+xml")).length,
+          gcs: items.filter((item) => item.src.includes("storage.googleapis.com")).length,
+          youtube: items.filter((item) => item.src.includes("ytimg.com")).length,
+        };
+      })(),
       fallbackTerminates: (() => {
         const img = document.createElement("img");
         const video = {
@@ -69,12 +81,14 @@ async function main() {
   });
   const filterResult = await call("Runtime.evaluate", {
     expression: `(() => {
-      const button = document.querySelector(".channel-filter:not(:disabled)");
-      if (!button) return JSON.stringify({ clicked: false });
-      button.click();
+      const select = document.querySelector("#channel");
+      const option = [...select.options].find((item) => item.value && !item.disabled);
+      if (!option) return JSON.stringify({ selected: false });
+      select.value = option.value;
+      render();
       return JSON.stringify({
-        clicked: true,
-        selectedChannel: document.querySelector("#channel")?.value || "",
+        selected: true,
+        selectedChannel: select.value,
         cards: document.querySelectorAll(".card").length,
         status: document.querySelector("#status")?.textContent || ""
       });
@@ -87,16 +101,17 @@ async function main() {
   if (!value || !filteredValue) throw new Error("empty-evaluation-result");
   const initial = JSON.parse(value);
   const filtered = JSON.parse(filteredValue);
-  if (initial.rows !== 32) throw new Error(`registry-row-count:${initial.rows}`);
-  if (initial.dbData + initial.savedData + initial.noData !== 32) {
-    throw new Error("registry-status-count");
-  }
+  if (initial.channelOptions !== 32) throw new Error(`registry-option-count:${initial.channelOptions}`);
+  if (initial.disabledChannelOptions !== 2) throw new Error(`no-data-option-count:${initial.disabledChannelOptions}`);
+  if (initial.containsExcludedChannel) throw new Error("excluded-channel-option");
   if (initial.unexpectedVideoChannels.length) {
     throw new Error(`out-of-scope-video-channels:${initial.unexpectedVideoChannels.join(",")}`);
   }
   if (!initial.fallbackTerminates) throw new Error("thumbnail-fallback-loop");
   if (!initial.status.includes("32ch")) throw new Error("scope-status-label");
-  if (!filtered.clicked || !filtered.selectedChannel) throw new Error("channel-filter");
+  if (initial.gridTop >= initial.viewportHeight) throw new Error(`video-grid-below-fold:${initial.gridTop}`);
+  if (!initial.images.loaded) throw new Error("no-loaded-thumbnails");
+  if (!filtered.selected || !filtered.selectedChannel) throw new Error("channel-filter");
   console.log(JSON.stringify({
     initial,
     filtered,
