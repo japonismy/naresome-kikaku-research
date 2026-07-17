@@ -28,6 +28,7 @@ async function main() {
       ws.send(JSON.stringify({ id, method, params }));
     });
 
+  await call("Page.bringToFront");
   await call("Page.reload", { ignoreCache: true });
   await new Promise((resolve) => setTimeout(resolve, 7000));
   const result = await call("Runtime.evaluate", {
@@ -101,6 +102,7 @@ async function main() {
   if (!value || !filteredValue) throw new Error("empty-evaluation-result");
   const initial = JSON.parse(value);
   const filtered = JSON.parse(filteredValue);
+  console.log(JSON.stringify({ initial, filtered }));
   if (initial.channelOptions !== 32) throw new Error(`registry-option-count:${initial.channelOptions}`);
   if (initial.disabledChannelOptions !== 2) throw new Error(`no-data-option-count:${initial.disabledChannelOptions}`);
   if (initial.containsExcludedChannel) throw new Error("excluded-channel-option");
@@ -112,10 +114,6 @@ async function main() {
   if (initial.gridTop >= initial.viewportHeight) throw new Error(`video-grid-below-fold:${initial.gridTop}`);
   if (!initial.images.loaded) throw new Error("no-loaded-thumbnails");
   if (!filtered.selected || !filtered.selectedChannel) throw new Error("channel-filter");
-  console.log(JSON.stringify({
-    initial,
-    filtered,
-  }));
 }
 
 main().catch((error) => {
