@@ -1,4 +1,5 @@
 ﻿default_visible,scope_type,content_flags,channel_id,channel,video_count,sources
+True,baseline_portal_snapshot,,UCj_9E9bot7tURW10az9_Diw,ゆっくり2chのちゃんちゃん,1,portal_snapshot_archive
 True,former_competitor,,,2ch 馴れ初め白書,50,observed_archive
 True,former_competitor,,,2ch馴れ初めクエスト,50,observed_archive
 True,former_competitor,,,2ch純愛物語,46,observed_archive
@@ -13,22 +14,22 @@ True,former_competitor,,,2ch馴れ初めムービー,1,observed_archive
 True,monitored_channel,,UC5qxS4hFAhSqPXNIZ-j4h-A,思い出のゆっくり2ch,1097,current
 True,monitored_channel,,UCj_9E9bot7tURW10az9_Diw,ゆっくり2chのちゃんちゃん,750,current
 True,monitored_channel,,UC2QbHksaudhIBmJfbFJHeVQ,2ch馴れ初めヒストリー,713,current
-True,monitored_channel,,UCIJONPMEYWDjyz07oNx55Pw,2ch馴れ初め奇跡の出会い,602,current
+True,monitored_channel,,UCIJONPMEYWDjyz07oNx55Pw,2ch馴れ初め奇跡の出会い,603,current
 True,monitored_channel,,UC9M17Nb4VrBTCynrJSTMj6Q,2ch馴れ初めラブレター,587,current
-True,monitored_channel,,UCqaL3Zr-4tF2AjQziFuhelg,2ch 馴れ初め ストーリーズ,513,current
-True,monitored_channel,,UCf-5TwO_qhozUjT_t7wFo7g,2ch馴れ初めキューピッド,513,current
+True,monitored_channel,,UCqaL3Zr-4tF2AjQziFuhelg,2ch 馴れ初め ストーリーズ,514,current
+True,monitored_channel,,UCf-5TwO_qhozUjT_t7wFo7g,2ch馴れ初めキューピッド,514,current
 True,monitored_channel,,UCNgCovRcGFrH1qe5uwJ5utg,2chほのぼのちゃんちゃん,499,current
 True,monitored_channel,,UCGAn8ks-dTNfJK7i9LgSBvQ,2ch馴れ初めで愛を語る,485,current
-True,monitored_channel,,UCdyUNf43th0WS72Iaxyi2Pw,レモネードハイツ,461,current
-True,monitored_channel,,UCaltBBIFhAqt8_ECttdKgsw,2ch馴れ初め感動シネマ,391,current
+True,monitored_channel,,UCdyUNf43th0WS72Iaxyi2Pw,レモネードハイツ,462,current
+True,monitored_channel,,UCaltBBIFhAqt8_ECttdKgsw,2ch馴れ初め感動シネマ,392,current
 True,monitored_channel,,UC4z1Nn5WWnjFZ7_mtpAq-0w,ゆっくり2ch語り,365,current
 True,monitored_channel,,UCsH9V11uQ-wkMJNleyksCtw,2chの感動馴初め話,253,current
 True,monitored_channel,,UCMeypkYE165Tbw12XPdVnxQ,2ch馴れ初めほっこり物語,250,current
 True,monitored_channel,,UCABdQbaMVtprZJa8oqlZIQQ,2ch馴れ初めツインズ,230,current
 True,monitored_channel,,UCvlBRb921xn_o13VTnILOKw,2ch馴れ初めゆっくりで最愛,141,current
-True,monitored_channel,,UCmEJtwgg3U7dM2cuB6UI4OQ,ほろり感動馴れ初め話,132,current
+True,monitored_channel,,UCmEJtwgg3U7dM2cuB6UI4OQ,ほろり感動馴れ初め話,133,current
+True,monitored_channel,,UC_3xqtULO8iMQFJuyw3RSlA,2ch感動の馴れ初め話,123,current
 True,monitored_channel,,UCuF5eOKpyxiZb_-grU2BWuA,2ch馴れ初めパレード,123,current
-True,monitored_channel,,UC_3xqtULO8iMQFJuyw3RSlA,2ch感動の馴れ初め話,122,current
 True,monitored_channel,,UChUBW2cG12v8rAbOEv3wJOg,あの日の馴れ初め,97,current
 True,monitored_channel,,UCZGcH1Ng57XSxnX62skVOrQ,馴れ初め脚長オジサン,92,current
 True,monitored_channel,,UC_B0RIqsASCDlZGI_GPPXqQ,2ch馴れ初めムービー,87,current
