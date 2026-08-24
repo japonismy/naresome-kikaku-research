@@ -5,12 +5,12 @@
   "excluded_registry_channels": [
     "俺たちの馴れ初め"
   ],
-  "searchable_videos": 10673,
+  "searchable_videos": 10682,
   "searchable_channel_ids": 30,
   "lifecycle_counts": {
-    "競合・更新あり": 16,
+    "競合・更新あり": 18,
     "過去競合・現在公開なし": 5,
-    "過去競合・更新停止": 11
+    "過去競合・更新停止": 9
   },
   "data_status_counts": {
     "DBデータあり": 30,
