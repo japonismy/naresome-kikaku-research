@@ -33,11 +33,17 @@ async function main() {
   await new Promise((resolve) => setTimeout(resolve, 7000));
   const result = await call("Runtime.evaluate", {
     expression: `JSON.stringify({
+      pageTitle: document.title,
       summary: document.querySelector("#channelSummary")?.textContent || "",
       cards: document.querySelectorAll(".card").length,
       status: document.querySelector("#status")?.textContent || "",
       gridTop: Math.round(document.querySelector("#grid")?.getBoundingClientRect().top || 0),
       viewportHeight: window.innerHeight,
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      defaultRelation: document.querySelector("#relationType")?.value || "",
+      defaultSort: document.querySelector("#sort")?.value || "",
+      loadMoreVisible: !document.querySelector("#loadMoreBtn")?.hidden,
       channelOptions: Math.max(0, document.querySelectorAll("#channel option").length - 1),
       disabledChannelOptions: document.querySelectorAll("#channel option:disabled").length,
       containsExcludedChannel: [...document.querySelectorAll("#channel option")]
@@ -103,6 +109,12 @@ async function main() {
   const initial = JSON.parse(value);
   const filtered = JSON.parse(filteredValue);
   console.log(JSON.stringify({ initial, filtered }));
+  if (initial.pageTitle !== "馴れ初め企画リサーチ") throw new Error(`page-title:${initial.pageTitle}`);
+  if (initial.cards !== 100) throw new Error(`initial-page-size:${initial.cards}`);
+  if (!initial.loadMoreVisible) throw new Error("load-more-hidden");
+  if (initial.defaultRelation !== "competitor") throw new Error(`default-relation:${initial.defaultRelation}`);
+  if (initial.defaultSort !== "date_desc") throw new Error(`default-sort:${initial.defaultSort}`);
+  if (initial.scrollWidth !== initial.clientWidth) throw new Error(`horizontal-overflow:${initial.scrollWidth}/${initial.clientWidth}`);
   if (initial.channelOptions !== 32) throw new Error(`registry-option-count:${initial.channelOptions}`);
   if (initial.disabledChannelOptions !== 2) throw new Error(`no-data-option-count:${initial.disabledChannelOptions}`);
   if (initial.containsExcludedChannel) throw new Error("excluded-channel-option");
@@ -113,7 +125,7 @@ async function main() {
   if (!initial.status.includes("32ch")) throw new Error("scope-status-label");
   if (initial.gridTop >= initial.viewportHeight) throw new Error(`video-grid-below-fold:${initial.gridTop}`);
   if (!initial.images.loaded) throw new Error("no-loaded-thumbnails");
-  if (!filtered.selected || !filtered.selectedChannel) throw new Error("channel-filter");
+  if (!filtered.selected || !filtered.selectedChannel || !filtered.cards) throw new Error("channel-filter");
 }
 
 main().catch((error) => {
