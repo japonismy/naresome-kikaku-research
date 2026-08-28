@@ -247,6 +247,30 @@
       object-fit: cover;
       background: #111;
     }
+    .thumbnail-wrap {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      background: #111;
+    }
+    .thumbnail-wrap img {
+      height: 100%;
+      aspect-ratio: auto;
+    }
+    .duration-badge {
+      position: absolute;
+      right: 6px;
+      bottom: 6px;
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, .82);
+      color: #fff;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+      line-height: 1.25;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .4);
+    }
     .meta {
       display: grid;
       gap: 7px;
@@ -789,7 +813,10 @@
       if (!(v.thumbnail_text || "").trim()) badges.push('<span class="badge warn">サムネ文字未整備</span>');
       hit.fields.forEach(field => badges.push(`<span class="badge hit">${escapeHtml(field)}</span>`));
       return `<article class="card" data-idx="${idx}" role="button" tabindex="0" aria-label="${escapeAttr(v.title || "動画詳細")}">
-        <img src="${escapeAttr(preferredThumbnail(v))}" alt="" loading="${position < 12 ? "eager" : "lazy"}"${position < 4 ? ' fetchpriority="high"' : ""} decoding="async" referrerpolicy="no-referrer" data-fallback-index="0" onerror="fallbackImage(this, ${idx})">
+        <div class="thumbnail-wrap">
+          <img src="${escapeAttr(preferredThumbnail(v))}" alt="" loading="${position < 12 ? "eager" : "lazy"}"${position < 4 ? ' fetchpriority="high"' : ""} decoding="async" referrerpolicy="no-referrer" data-fallback-index="0" onerror="fallbackImage(this, ${idx})">
+          <span class="duration-badge" title="動画の長さ">${formatDuration(v.duration_sec)}</span>
+        </div>
         <div class="meta">
           <div class="primary-meta">
             <span class="channel-name">${escapeHtml(v.channel || "")}</span>
@@ -827,6 +854,7 @@
         `視聴回数: ${fmt.format(views)} 回`,
         `高評価: ${fmt.format(likes)} / 高評価率 ${rateText(likes, views)}`,
         `コメント: ${fmt.format(comments)} / コメント率 ${rateText(comments, views)}`,
+        `動画の長さ: ${escapeHtml(formatDuration(v.duration_sec))}`,
         `公開日: ${escapeHtml((v.published_at || "").slice(0, 10) || "日付なし")}`,
         `データ更新: ${escapeHtml(formatDateTime(v.latest_observed_at || v.observed_at || v.fetched_at) || "不明")}`,
         `公開状態: ${escapeHtml(availabilityLabel(availabilityState(v)))}`,
@@ -956,6 +984,18 @@
 
     function rateText(count, views) {
       return `${(rateValue(count, views) * 100).toFixed(2)}%`;
+    }
+
+    function formatDuration(value) {
+      const totalSeconds = Math.round(Number(value));
+      if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return "不明";
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      const paddedSeconds = String(seconds).padStart(2, "0");
+      return hours
+        ? `${hours}:${String(minutes).padStart(2, "0")}:${paddedSeconds}`
+        : `${minutes}:${paddedSeconds}`;
     }
 
     function viewsPerDay(v) {
