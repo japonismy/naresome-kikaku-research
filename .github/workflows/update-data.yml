@@ -19,7 +19,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install google-cloud-bigquery google-cloud-secret-manager openpyxl
+        run: pip install google-cloud-bigquery google-cloud-storage google-cloud-secret-manager openpyxl
 
       - name: Configure Google credentials
         env:
@@ -39,6 +39,15 @@ jobs:
         run: python refresh_youtube_current_stats.py
 
       - name: Generate data from BigQuery
+        run: python generate_portal_data_bq.py
+
+      - name: Archive latest thumbnails
+        id: archive_thumbnails
+        continue-on-error: true
+        run: python archive_recent_thumbnails.py --limit 150
+
+      - name: Regenerate data with archived thumbnails
+        if: steps.archive_thumbnails.outcome == 'success'
         run: python generate_portal_data_bq.py
 
       - name: Validate public scope and asset links

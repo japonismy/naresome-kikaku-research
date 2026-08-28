@@ -705,7 +705,7 @@
       const limited = filteredRows.slice(0, visibleLimit);
       status.textContent = `表示 ${fmt.format(limited.length)}件 / ヒット ${fmt.format(filteredRows.length)}件 / 32ch対象動画 ${fmt.format(videos.length)}件`;
       grid.innerHTML = limited.length
-        ? limited.map(({ v, hit }) => cardHtml(v, hit)).join("")
+        ? limited.map(({ v, hit }, position) => cardHtml(v, hit, position)).join("")
         : '<div class="empty">条件に一致する動画がありません。条件を減らして再検索してください。</div>';
       grid.querySelectorAll(".card").forEach(element => {
         const open = () => openDetail(videos[Number(element.dataset.idx)]);
@@ -769,7 +769,7 @@
       return { ok, score: termHits.flat().length, fields: [...new Set(termHits.flat())] };
     }
 
-    function cardHtml(v, hit) {
+    function cardHtml(v, hit, position) {
       const idx = videos.indexOf(v);
       const meta = channelMeta(v);
       const date = (v.published_at || "").slice(0, 10) || "日付なし";
@@ -789,7 +789,7 @@
       if (!(v.thumbnail_text || "").trim()) badges.push('<span class="badge warn">サムネ文字未整備</span>');
       hit.fields.forEach(field => badges.push(`<span class="badge hit">${escapeHtml(field)}</span>`));
       return `<article class="card" data-idx="${idx}" role="button" tabindex="0" aria-label="${escapeAttr(v.title || "動画詳細")}">
-        <img src="${escapeAttr(preferredThumbnail(v))}" alt="" loading="lazy" data-fallback-index="0" onerror="fallbackImage(this, ${idx})">
+        <img src="${escapeAttr(preferredThumbnail(v))}" alt="" loading="${position < 12 ? "eager" : "lazy"}"${position < 4 ? ' fetchpriority="high"' : ""} decoding="async" referrerpolicy="no-referrer" data-fallback-index="0" onerror="fallbackImage(this, ${idx})">
         <div class="meta">
           <div class="primary-meta">
             <span class="channel-name">${escapeHtml(v.channel || "")}</span>

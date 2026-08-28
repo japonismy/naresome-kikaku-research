@@ -217,6 +217,13 @@ uv run --with google-cloud-bigquery python deploy_pages.py
 
 GitHub Actions `.github/workflows/update-data.yml` で毎日 03:50 JST にBigQueryから再生成します。
 
+再生成後、最新の未保全サムネを最大150件GCSへ保存してBigQueryへ反映します。これにより、初期表示が `i.ytimg.com` のみに依存する状態を防ぎます。手動実行する場合:
+
+```powershell
+uv run --with google-cloud-bigquery --with google-cloud-storage python archive_recent_thumbnails.py --limit 150
+uv run --with google-cloud-bigquery python generate_portal_data_bq.py
+```
+
 前提:
 
 - BQ側の日次更新ジョブ `naresome-daily-metadata` が 03:20 JST に完了していること
