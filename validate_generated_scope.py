@@ -27,13 +27,12 @@ def main() -> int:
     videos = read_js(DATA_DIR / "videos.js", "VIDEO_DATA")
     transcripts = read_js(DATA_DIR / "transcripts_light.js", "TRANSCRIPT_DATA")
 
-    assert len(registry) == 33, len(registry)
-    assert len(included) == 32, len(included)
+    assert registry and included, "Registry must contain public channels"
     assert [row["channel_name"] for row in excluded] == ["俺たちの馴れ初め"], excluded
     canonical_ids = [row["canonical_channel_id"] for row in included]
-    assert len(set(canonical_ids)) == 32 and all(canonical_ids)
-    assert len(channels) == 32
-    assert len({channel["channel_id"] for channel in channels}) == 32
+    assert len(set(canonical_ids)) == len(included) and all(canonical_ids)
+    assert len(channels) == len(included)
+    assert {channel["channel_id"] for channel in channels} == set(canonical_ids)
 
     allowed_ids = {channel["channel_id"] for channel in channels}
     allowed_titles = {

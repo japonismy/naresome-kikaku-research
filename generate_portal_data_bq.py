@@ -491,8 +491,8 @@ def load_baseline_competitor_channels() -> list[dict[str, object]]:
         for row in csv.DictReader(f):
             row["provided_subscribers"] = int_value(row.get("provided_subscribers"))
             rows.append(row)
-    if len(rows) != 33:
-        raise ValueError(f"Baseline competitor registry must contain exactly 33 channels; found {len(rows)}")
+    if not rows:
+        raise ValueError("Baseline competitor registry must not be empty")
     handles = [normalize_handle(row.get("handle", "")) for row in rows]
     duplicates = sorted({handle for handle in handles if handle and handles.count(handle) > 1})
     if duplicates:
@@ -737,8 +737,15 @@ def validate_baseline_output(
     channels: list[dict[str, object]],
     videos: list[dict[str, object]],
 ) -> None:
-    if len(channels) != 32:
-        raise ValueError(f"Expected 32 public baseline channels after the explicit adult exclusion; found {len(channels)}")
+    included = [
+        row for row in load_baseline_competitor_channels()
+        if not compact_text(row.get("portal_scope", "")).startswith("exclude")
+    ]
+    if len(channels) != len(included):
+        raise ValueError(f"Expected {len(included)} registered public channels; found {len(channels)}")
+    expected_ids = {compact_text(row.get("canonical_channel_id", "")) for row in included}
+    if all(expected_ids) and {str(channel["channel_id"]) for channel in channels} != expected_ids:
+        raise ValueError("Public channel IDs differ from the approved registry")
     allowed_ids = {str(channel["channel_id"]) for channel in channels}
     allowed_titles = {
         normalize_channel_title(title)
