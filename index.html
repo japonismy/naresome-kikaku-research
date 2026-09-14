@@ -106,6 +106,8 @@
       outline: 2px solid var(--accent);
       outline-offset: 2px;
     }
+    .basic-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin-top: 10px; }
+    .basic-filters .filter-wide { grid-column: auto; }
     .preset-row {
       display: flex;
       flex-wrap: wrap;
@@ -426,6 +428,7 @@
     @media (max-width: 430px) {
       .filter-grid { grid-template-columns: minmax(0, 1fr); }
       .filter-wide { grid-column: auto; }
+      .basic-filters { grid-template-columns: minmax(0, 1fr); }
       .preset-row { gap: 6px; }
       .preset { padding-inline: 9px; }
     }
@@ -445,12 +448,31 @@
       <button id="searchBtn" type="button">キーワード検索</button>
     </div>
 
-    <div class="preset-row" aria-label="よく使う表示">
-      <span class="preset-label">すぐ探す</span>
-      <button class="preset" type="button" data-preset="recent">直近30日</button>
-      <button class="preset" type="button" data-preset="rising">急上昇</button>
-      <button class="preset" type="button" data-preset="views">高再生</button>
-      <button class="preset" type="button" data-preset="assets">資料完備</button>
+    <div class="basic-filters">
+        <label class="filter-wide">チャンネル
+          <select id="channel"></select>
+        </label>
+        <label class="filter-wide">並び替え
+          <select id="sort">
+            <option value="views_desc" selected>高再生順</option>
+            <option value="date_desc">公開日が新しい順</option>
+            <option value="likes_desc">高評価が多い順</option>
+            <option value="comments_desc">コメントが多い順</option>
+            <option value="velocity_desc">1日あたりの平均再生数順</option>
+            <option value="channel_ratio_desc">チャンネル内突出順</option>
+            <option value="like_rate_desc">高評価率が高い順</option>
+            <option value="comment_rate_desc">コメント率が高い順</option>
+            <option value="date_asc">公開日が古い順</option>
+            <option value="relevance">関連度順</option>
+          </select>
+        </label>
+    </div>
+    <div class="preset-row" aria-label="公開期間">
+      <span class="preset-label">公開期間</span>
+      <button class="preset" type="button" data-preset="all">全期間</button>
+      <button class="preset" type="button" data-preset="7">直近7日</button>
+      <button class="preset" type="button" data-preset="14">直近14日</button>
+      <button class="preset" type="button" data-preset="30">直近30日</button>
       <button class="preset reset" id="resetBtn" type="button">条件をリセット</button>
     </div>
 
@@ -484,9 +506,7 @@
             <option value="過去競合・現在公開なし">現在公開なし</option>
           </select>
         </label>
-        <label class="filter-wide">チャンネル
-          <select id="channel"></select>
-        </label>
+
         <label>視聴回数
           <span class="views-range">
             <input id="minViews" type="number" min="0" step="10000" placeholder="以上">
@@ -532,20 +552,7 @@
             <option value="git_portal_snapshot">前回サイト保全</option>
           </select>
         </label>
-        <label class="filter-wide">並び替え
-          <select id="sort">
-            <option value="date_desc" selected>公開日が新しい順</option>
-            <option value="velocity_desc">急上昇順（再生数/日）</option>
-            <option value="channel_ratio_desc">チャンネル内突出順</option>
-            <option value="views_desc">視聴回数が多い順</option>
-            <option value="likes_desc">高評価が多い順</option>
-            <option value="comments_desc">コメントが多い順</option>
-            <option value="like_rate_desc">高評価率が高い順</option>
-            <option value="comment_rate_desc">コメント率が高い順</option>
-            <option value="date_asc">公開日が古い順</option>
-            <option value="relevance">関連度順</option>
-          </select>
-        </label>
+
       </div>
       <div class="search-fields">
         <span>検索対象</span>
@@ -727,7 +734,7 @@
 
     function renderGrid() {
       const limited = filteredRows.slice(0, visibleLimit);
-      status.textContent = `表示 ${fmt.format(limited.length)}件 / ヒット ${fmt.format(filteredRows.length)}件 / 32ch対象動画 ${fmt.format(videos.length)}件`;
+      status.textContent = `表示 ${fmt.format(limited.length)}件 / ヒット ${fmt.format(filteredRows.length)}件 / 対象動画 ${fmt.format(videos.length)}件`;
       grid.innerHTML = limited.length
         ? limited.map(({ v, hit }, position) => cardHtml(v, hit, position)).join("")
         : '<div class="empty">条件に一致する動画がありません。条件を減らして再検索してください。</div>';
@@ -901,7 +908,8 @@
       add("archiveType", "データ", valueOf("archiveType"), selectedText("archiveType"));
       container.innerHTML = filters.map(filter => `<button class="filter-chip" type="button" data-clear="${escapeAttr(filter.id)}">${escapeHtml(filter.label)}</button>`).join("");
       container.querySelectorAll("[data-clear]").forEach(button => button.addEventListener("click", () => clearFilter(button.dataset.clear)));
-      document.getElementById("advancedSummary").textContent = filters.length ? `詳細条件（${filters.length}件）` : "詳細条件";
+      const advancedCount = filters.filter(filter => document.getElementById("advancedFilters").contains(document.getElementById(filter.id))).length;
+      document.getElementById("advancedSummary").textContent = advancedCount ? `詳細条件（${advancedCount}件）` : "詳細条件";
     }
 
     function clearFilter(id) {
@@ -912,30 +920,25 @@
     }
 
     function applyPreset(name) {
-      if (name === "recent") {
-        document.getElementById("dateFrom").value = recentDateValue();
-        document.getElementById("sort").value = "date_desc";
-      }
-      if (name === "rising") document.getElementById("sort").value = "velocity_desc";
-      if (name === "views") document.getElementById("sort").value = "views_desc";
-      if (name === "assets") document.getElementById("assetStatus").value = "complete";
+      document.getElementById("dateFrom").value = name === "all" ? "" : recentDateValue(Number(name));
+      document.getElementById("dateTo").value = "";
       render();
     }
 
     function updatePresetState() {
-      document.querySelectorAll("[data-preset]").forEach(button => button.classList.remove("active"));
-      if (valueOf("dateFrom") === recentDateValue() && valueOf("sort") === "date_desc") document.querySelector('[data-preset="recent"]').classList.add("active");
-      if (valueOf("sort") === "velocity_desc") document.querySelector('[data-preset="rising"]').classList.add("active");
-      if (valueOf("sort") === "views_desc") document.querySelector('[data-preset="views"]').classList.add("active");
-      if (valueOf("assetStatus") === "complete") document.querySelector('[data-preset="assets"]').classList.add("active");
+      document.querySelectorAll("[data-preset]").forEach(button => {
+        const expected = button.dataset.preset === "all" ? "" : recentDateValue(Number(button.dataset.preset));
+        const active = valueOf("dateFrom") === expected && !valueOf("dateTo");
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-pressed", String(active));
+      });
     }
-
     function resetFilters() {
       ["q", "channelCategory", "channelLifecycle", "channel", "minViews", "maxViews", "dateFrom", "dateTo", "thumbnailTextStatus", "availabilityStatus", "assetStatus", "archiveType"].forEach(id => {
         document.getElementById(id).value = "";
       });
       document.getElementById("relationType").value = "competitor";
-      document.getElementById("sort").value = "date_desc";
+      document.getElementById("sort").value = "views_desc";
       document.getElementById("fieldThumbnail").checked = true;
       document.getElementById("fieldTitle").checked = true;
       document.getElementById("fieldTags").checked = true;
@@ -1030,9 +1033,9 @@
       return latestPublished;
     }
 
-    function recentDateValue() {
-      const date = new Date(latestPublishedDate() + "T00:00:00Z");
-      date.setUTCDate(date.getUTCDate() - 29);
+    function recentDateValue(days = 30) {
+      const date = new Date(new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" }) + "T00:00:00Z");
+      date.setUTCDate(date.getUTCDate() - (days - 1));
       return date.toISOString().slice(0, 10);
     }
 
