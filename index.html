@@ -108,7 +108,7 @@
     }
     .scope-checkbox { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text); }
     .scope-checkbox input { width: 18px; height: 18px; min-height: 18px; accent-color: var(--accent); }
-    .basic-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin-top: 10px; }
+    .basic-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
     .basic-filters .filter-wide { grid-column: auto; }
     .preset-row {
       display: flex;
@@ -456,6 +456,17 @@
       <label class="scope-checkbox"><input id="includeOwned" type="checkbox">自社動画も含める</label>
     </div>
     <div class="basic-filters">
+        <label>動画の尺
+          <select id="durationRange">
+            <option value="">すべての尺</option>
+            <option value="0-600">10分未満</option>
+            <option value="600-1200">10分〜20分未満</option>
+            <option value="1200-1800">20分〜30分未満</option>
+            <option value="1800-3600">30分〜60分未満</option>
+            <option value="3600-">60分以上</option>
+            <option value="unknown">尺データなし</option>
+          </select>
+        </label>
         <label class="filter-wide">チャンネル
           <select id="channel"></select>
         </label>
@@ -486,16 +497,7 @@
     <details class="advanced" id="advancedFilters">
       <summary><span id="advancedSummary">詳細条件</span></summary>
       <div class="filter-grid">
-        <label>競合区分
-          <select id="channelCategory">
-            <option value="">すべて</option>
-            <option value="self">自チャンネル</option>
-            <option value="related">関連チャンネル</option>
-            <option value="direct_a">直接競合A</option>
-            <option value="direct_b">直接競合B</option>
-            <option value="adjacent">周辺競合</option>
-          </select>
-        </label>
+
 
         <label>チャンネル状態
           <select id="channelLifecycle">
@@ -673,6 +675,15 @@
       render();
     }
 
+    function matchesDuration(value, range) {
+      if (!range) return true;
+      const seconds = Number(value);
+      const known = Number.isFinite(seconds) && seconds > 0;
+      if (range === "unknown") return !known;
+      if (!known) return false;
+      const [min, max] = range.split("-");
+      return seconds >= Number(min) && (!max || seconds < Number(max));
+    }
     function render() {
       visibleLimit = PAGE_SIZE;
       const q = document.getElementById("q").value.trim().toLowerCase();
@@ -680,7 +691,7 @@
       const fields = selectedFields();
       const matchAll = document.getElementById("matchAll").checked;
       const channel = channelSelect.value;
-      const channelCategory = document.getElementById("channelCategory").value;
+      const durationRange = document.getElementById("durationRange").value;
       const includeOwned = document.getElementById("includeOwned").checked;
       const channelLifecycle = document.getElementById("channelLifecycle").value;
       const minViews = Number(document.getElementById("minViews").value || 0);
@@ -696,7 +707,7 @@
       filteredRows = videos.map(v => ({ v, hit: hitInfo(v, terms, fields, matchAll) })).filter(({ v, hit }) => {
         const meta = channelMeta(v);
         if (channel && v.channel !== channel) return false;
-        if (channelCategory && meta.category !== channelCategory) return false;
+        if (!matchesDuration(v.duration_sec, durationRange)) return false;
         const relation = v.relation_type || "competitor";
         if (relation !== "competitor" && !(includeOwned && relation === "owned_current")) return false;
         if (channelLifecycle && meta.lifecycle !== channelLifecycle) return false;
@@ -759,10 +770,10 @@
       const selected = channelSelect.value;
       const counts = new Map();
       videos.forEach(v => counts.set(v.channel, (counts.get(v.channel) || 0) + 1));
-      const categoryOrder = ["direct_a", "direct_b", "adjacent", "self", "related"];
-      const categoryLabels = { self: "自チャンネル", related: "関連チャンネル", direct_a: "直接競合A", direct_b: "直接競合B", adjacent: "周辺競合" };
+      const categoryOrder = ["competitor", "self", "related"];
+      const categoryLabels = { self: "自チャンネル", related: "関連チャンネル", competitor: "競合チャンネル" };
       const groups = categoryOrder.map(category => {
-        const options = channels.filter(channel => channel.category === category).map(channel => {
+        const options = channels.filter(channel => (category === "competitor" ? !["self", "related"].includes(channel.category) : channel.category === category)).map(channel => {
           const name = channel.portal_channel_name || channel.channel_name;
           const count = counts.get(name) || 0;
           const disabled = count === 0 ? " disabled" : "";
@@ -808,7 +819,7 @@
       const likes = observedLikes(v);
       const comments = observedComments(v);
       const badges = [];
-      if (meta.category_label) badges.push(`<span class="badge category">${escapeHtml(meta.category_label)}</span>`);
+
       if (v.relation_type === "owned_current") badges.push('<span class="badge owned">自社動画</span>');
       if (v.relation_type === "former_competitor") badges.push('<span class="badge archive">旧競合</span>');
       if (v.relation_type === "migration_or_related_competitor") badges.push('<span class="badge archive">関連監視</span>');
@@ -856,7 +867,7 @@
       archiveLink.href = v.thumbnail_saved_url || publicGcsUrl(v.thumbnail_gcs_uri) || "#";
       document.getElementById("detailMeta").innerHTML = [
         `チャンネル: ${escapeHtml(v.channel || "")}`,
-        `競合区分: ${escapeHtml(meta.category_label || "未分類")} / ${escapeHtml(relationLabel(v.relation_type))}`,
+        `動画区分: ${escapeHtml(relationLabel(v.relation_type))}`,
         `チャンネル状態: ${escapeHtml(lifecycleLabel(meta.lifecycle))}`,
         `視聴回数: ${fmt.format(views)} 回`,
         `高評価: ${fmt.format(likes)} / 高評価率 ${rateText(likes, views)}`,
@@ -894,7 +905,7 @@
         if (value) filters.push({ id, label: `${label}: ${display}` });
       };
       add("q", "検索", document.getElementById("q").value.trim());
-      add("channelCategory", "競合区分", valueOf("channelCategory"), selectedText("channelCategory"));
+      add("durationRange", "尺", valueOf("durationRange"), selectedText("durationRange"));
 
       add("channelLifecycle", "状態", valueOf("channelLifecycle"), selectedText("channelLifecycle"));
       add("channel", "チャンネル", valueOf("channel"), selectedText("channel"));
@@ -934,7 +945,7 @@
       });
     }
     function resetFilters() {
-      ["q", "channelCategory", "channelLifecycle", "channel", "minViews", "maxViews", "dateFrom", "dateTo", "thumbnailTextStatus", "availabilityStatus", "assetStatus", "archiveType"].forEach(id => {
+      ["q", "durationRange", "channelLifecycle", "channel", "minViews", "maxViews", "dateFrom", "dateTo", "thumbnailTextStatus", "availabilityStatus", "assetStatus", "archiveType"].forEach(id => {
         document.getElementById(id).value = "";
       });
       document.getElementById("includeOwned").checked = false;
