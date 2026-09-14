@@ -140,14 +140,16 @@ def read_video_ids() -> list[str]:
 
 def read_allowed_channels() -> set[str]:
     with BASELINE_CHANNELS_CSV.open("r", newline="", encoding="utf-8-sig") as f:
-        channels = {
+        channel_names = [
             normalize_channel_title(row.get("channel_name", ""))
             for row in csv.DictReader(f)
-            if normalize_channel_title(row.get("channel_name", ""))
-            and not str(row.get("portal_scope", "") or "").startswith("exclude")
-        }
-    if len(channels) != 32:
-        raise SystemExit(f"Public baseline registry must contain 32 unique channels; found {len(channels)}")
+            if not str(row.get("portal_scope", "") or "").startswith("exclude")
+        ]
+    if not channel_names or any(not name for name in channel_names):
+        raise SystemExit("Public baseline registry must contain non-empty channel names")
+    channels = set(channel_names)
+    if len(channels) != len(channel_names):
+        raise SystemExit("Public baseline registry contains duplicate channel names")
     return channels
 
 
