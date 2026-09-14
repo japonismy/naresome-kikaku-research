@@ -136,10 +136,12 @@ def read_registry() -> list[dict[str, str]]:
             if not str(row.get("portal_scope", "") or "").startswith("exclude")
         ]
     channel_ids = [row.get("canonical_channel_id", "").strip() for row in rows]
-    if len(rows) != 32 or any(not channel_id for channel_id in channel_ids):
-        raise SystemExit("Public baseline registry must contain exactly 32 canonical channel IDs")
-    if len(set(channel_ids)) != 32:
+    if not rows or any(not channel_id for channel_id in channel_ids):
+        raise SystemExit("Public baseline registry must contain non-empty canonical channel IDs")
+    if len(set(channel_ids)) != len(channel_ids):
         raise SystemExit("Baseline registry contains duplicate canonical channel IDs")
+    for row, channel_id in zip(rows, channel_ids):
+        row["canonical_channel_id"] = channel_id
     return rows
 
 
