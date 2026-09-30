@@ -880,6 +880,12 @@ def load_former_competitor_channels() -> set[str]:
 
 
 def classify_videos(videos: list[dict[str, object]], rules: dict[str, dict[str, str]]) -> dict[str, int]:
+    reviewed_titles = {}
+    review_csv = SOURCE_DIR / "reviewed_nonadult_titles.csv"
+    if review_csv.exists():
+        with review_csv.open(encoding="utf-8-sig", newline="") as source:
+            for row in csv.DictReader(source):
+                reviewed_titles[row["video_id"]] = unicodedata.normalize("NFKC", compact_text(row["reviewed_title"]))
     counts: Counter[str] = Counter()
     for item in videos:
         flags = set(str(x) for x in item.get("content_flags", []) if x)
@@ -895,7 +901,10 @@ def classify_videos(videos: list[dict[str, object]], rules: dict[str, dict[str, 
                 item["scope_type"] = classification
             item["classification_reason"] = rule["reason"] or "チャンネル表示ルール"
         normalized_title = unicodedata.normalize("NFKC", title)
-        if ADULT_TITLE_RE.search(normalized_title):
+        reviewed_nonadult = reviewed_titles.get(str(item.get("video_id", ""))) == normalized_title
+        if reviewed_nonadult and not (rule and rule["classification"] == "adult"):
+            flags.discard("adult")
+        elif ADULT_TITLE_RE.search(normalized_title):
             flags.add("adult")
             if not rule:
                 item["classification_reason"] = "動画タイトルの成人向け表現"

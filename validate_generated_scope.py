@@ -30,6 +30,9 @@ def main() -> int:
     assert registry and included, "Registry must contain public channels"
     assert [row["channel_name"] for row in excluded] == ["俺たちの馴れ初め"], excluded
     canonical_ids = [row["canonical_channel_id"] for row in included]
+    discovery_exclusions = read_csv(SOURCE_DIR / "excluded_discovery_channels.csv")
+    excluded_discovery_ids = {row["channel_id"] for row in discovery_exclusions if row.get("decision") == "exclude"}
+    assert not (set(canonical_ids) & excluded_discovery_ids), "Excluded discovery channel reintroduced"
     assert len(set(canonical_ids)) == len(included) and all(canonical_ids)
     assert len(channels) == len(included)
     assert {channel["channel_id"] for channel in channels} == set(canonical_ids)
