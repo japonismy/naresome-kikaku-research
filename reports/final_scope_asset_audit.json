@@ -5,7 +5,7 @@
   "excluded_registry_channels": [
     "俺たちの馴れ初め"
   ],
-  "searchable_videos": 11635,
+  "searchable_videos": 11645,
   "searchable_channel_ids": 34,
   "lifecycle_counts": {
     "競合・更新あり": 22,
@@ -17,7 +17,7 @@
     "DBデータあり": 34,
     "データなし": 2
   },
-  "thumbnail_gcs_assets": 6676,
+  "thumbnail_gcs_assets": 6686,
   "script_gcs_assets": 1786,
   "copy_archive_thumbnail_links": 310,
   "thumbnail_override_links": 28,
