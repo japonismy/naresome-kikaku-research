@@ -28,7 +28,9 @@ def main() -> int:
     transcripts = read_js(DATA_DIR / "transcripts_light.js", "TRANSCRIPT_DATA")
 
     assert registry and included, "Registry must contain public channels"
-    assert [row["channel_name"] for row in excluded] == ["俺たちの馴れ初め"], excluded
+    # The registry owns scope decisions; approved restorations must not be blocked
+    # by an obsolete hard-coded channel name.
+    assert not ({row["canonical_channel_id"] for row in excluded} & {row["canonical_channel_id"] for row in included})
     canonical_ids = [row["canonical_channel_id"] for row in included]
     discovery_exclusions = read_csv(SOURCE_DIR / "excluded_discovery_channels.csv")
     excluded_discovery_ids = {row["channel_id"] for row in discovery_exclusions if row.get("decision") == "exclude"}

@@ -73,9 +73,9 @@ uv run --with google-genai --with google-cloud-bigquery python ocr_missing_thumb
 
 ## 対象チャンネル
 
-元のユーザー指定33チャンネルは `data_sources/baseline_competitor_channels.csv` に記録し、そのうち「俺たちの馴れ初め」は `exclude_adult` として公開・検索対象から外します。公開ページの対象は残る32チャンネルだけです。台帳外にある成人向けチャンネル、漫画・ボイコミ参考チャンネル、その他の旧競合も、BigQueryや旧調査CSVにデータが残っていても公開ページへ出力しません。
+掲載対象は `data_sources/baseline_competitor_channels.csv` を正本とします。2026-10-28の指示で「俺たちの馴れ初め」の旧チャンネル除外を解除し、「スミレフィルム」を追加しました。台帳外のチャンネルはDBにデータがあっても公開しません。動画単位の既存フィルターは維持します。
 
-公開対象32チャンネルは、固定したcanonical channel IDを優先してBigQueryの `channels` と突合し、次のデータを統合します。
+公開対象はcanonical channel IDでBigQueryと突合し、以下を統合します。
 
 - 現行動画: `videos`
 - 停止・削除前の保全動画: `videos_archive_20260527`

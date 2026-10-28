@@ -8,7 +8,7 @@ direct_a,2chほっこり馴れ初め話,@nresome-happy,UCCgLFnHcSl1qoK5hzrjdBGQ,
 direct_a,2ch馴れ初めキューピッド,@2ch-naresomecupid,UCf-5TwO_qhozUjT_t7wFo7g,47800,benchmark_current_or_historical,ほっこり型,
 direct_a,2ch馴れ初め日記帳,@2ch-wf8jq,UCZO_CyvufladklB8zJCWGJA,47500,benchmark_current_or_historical,フィクション・非引用を明記,
 direct_a,2ch 馴れ初め白書,@naresomehakusho,UCbmIgai3Xl6myks8yCFOqfg,46500,benchmark_current_or_historical,フィクション・非引用を明記,
-direct_a,俺たちの馴れ初め,@俺たちの馴れ初め,UCqQz6LVzjVFhwuptIARMOEw,37300,benchmark_current_or_historical,旧成人向け分類のため公開対象外,exclude_adult
+direct_a,俺たちの馴れ初め,@俺たちの馴れ初め,UCqQz6LVzjVFhwuptIARMOEw,37300,benchmark_current_or_historical,Owner approved portal inclusion 2026-10-28; current competitor; legacy exclusion removed,
 direct_a,2ch馴れ初めヒストリー,@2ch馴れ初めヒストリー,UC2QbHksaudhIBmJfbFJHeVQ,30200,benchmark_current_or_historical,夫婦の馴れ初め,
 direct_a,2ch馴れ初め奇跡の出会い,@2ch-uu1ct,UCIJONPMEYWDjyz07oNx55Pw,29100,benchmark_current_or_historical,夫婦の馴れ初め・ほっこり,
 direct_a,ゆっくり2chのちゃんちゃん,@2chchanchan,UCj_9E9bot7tURW10az9_Diw,28100,benchmark_current_or_historical,人間関係全般だが形式・視聴者が近い,
@@ -36,3 +36,4 @@ direct_a,2ch馴れ初め物語,@ch-ih2cu,UCOBZRjeoyyA26TcAmkXq7uQ,26400,benchmar
 direct_b,馴れ初めステーション,@馴れ初めステーション,UCnQXafSqW9wSkwGi-7-xn2Q,2120,benchmark_current_or_historical,User requested 2026-09-13; daily BigQuery monitoring,
 direct_b,2ch馴れ初め横丁,@2ch-dc5iy,UCNxo2FDan06anwFifY5ew5w,18000,benchmark_current_or_historical,User approved 2026-09-30; full metadata monitoring; paid OCR excluded,
 direct_b,馴れ初めの中心で愛を叫ぶ,@馴れ初めの中心で愛を叫ぶ,UCnHQiFUyQhT6wPG8bJcreMg,3230,benchmark_current_or_historical,User approved 2026-09-30; full metadata monitoring; paid OCR excluded,
+direct_b,スミレフィルム,@sumirefilm,UChcGiinrSBYGTNOfhU1A_SQ,4690,benchmark_current_or_historical,Owner approved 2026-10-28; Lemonade related per owner; paid OCR excluded,
