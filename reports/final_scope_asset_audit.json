@@ -3,7 +3,7 @@
   "source_registry_channels": 38,
   "public_registry_channels": 38,
   "excluded_registry_channels": [],
-  "searchable_videos": 12180,
+  "searchable_videos": 12196,
   "searchable_channel_ids": 36,
   "lifecycle_counts": {
     "競合・更新あり": 24,
@@ -15,7 +15,7 @@
     "DBデータあり": 36,
     "データなし": 2
   },
-  "thumbnail_gcs_assets": 7203,
+  "thumbnail_gcs_assets": 7219,
   "script_gcs_assets": 1877,
   "copy_archive_thumbnail_links": 310,
   "thumbnail_override_links": 28,
