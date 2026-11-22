@@ -3,19 +3,19 @@
   "source_registry_channels": 38,
   "public_registry_channels": 38,
   "excluded_registry_channels": [],
-  "searchable_videos": 12505,
+  "searchable_videos": 12520,
   "searchable_channel_ids": 36,
   "lifecycle_counts": {
     "競合・更新あり": 24,
-    "過去競合・現在公開なし": 3,
-    "過去競合・更新停止": 10,
+    "過去競合・現在公開なし": 4,
+    "過去競合・更新停止": 9,
     "過去競合・現在非公開": 1
   },
   "data_status_counts": {
     "DBデータあり": 36,
     "データなし": 2
   },
-  "thumbnail_gcs_assets": 7528,
+  "thumbnail_gcs_assets": 7543,
   "script_gcs_assets": 1877,
   "copy_archive_thumbnail_links": 310,
   "thumbnail_override_links": 28,
